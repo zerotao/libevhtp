@@ -1,1 +1,1 @@
-add_target_sources(libevhtp htparser.c)
+add_target_sources(libevhtp evhtp_parser.c)

@@ -1,6 +1,26 @@
 cmake_minimum_required (VERSION 2.8)
 project                (libevhtp)
 
+INCLUDE (CheckFunctionExists)
+INCLUDE (CheckIncludeFiles)
+INCLUDE (CheckTypeSize)
+
+CHECK_FUNCTION_EXISTS(alloca C_ALLOCA)
+CHECK_FUNCTION_EXISTS(memcmp HAVE_MEMCMP)
+CHECK_INCLUDE_FILES(alloca.h HAVE_ALLOCA_H)
+CHECK_INCLUDE_FILES(strings.h HAVE_STRINGS_H)
+CHECK_INCLUDE_FILES(string.h HAVE_STRING_H)
+CHECK_INCLUDE_FILES(stdlib.h HAVE_STDLIB_H)
+CHECK_INCLUDE_FILES(sys/time.h HAVE_SYS_TIME_H)
+CHECK_INCLUDE_FILES(sys/times.h HAVE_SYS_TIMES_H)
+CHECK_INCLUDE_FILES(unistd.h HAVE_UNISTD_H)
+CHECK_INCLUDE_FILES(memory.h HAVE_MEMORY_H)
+CHECK_INCLUDE_FILES(stdarg.h HAVE_STDARG_PROTOTYPES)
+
+CHECK_TYPE_SIZE("int" SIZEOF_INT)
+CHECK_TYPE_SIZE("long" SIZEOF_LONG)
+CHECK_TYPE_SIZE("short" SIZEOF_SHORT)
+
 set     (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 include (AddTargetSources)
 
@@ -76,6 +96,9 @@ else()
 	set (EVHTP_BUILD_TYPE STATIC)
 endif()
 
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${EVHTP_DEPS_INSTALL}/lib/)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${EVHTP_DEPS_INSTALL}/lib/)
+
 configure_file(
 	${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/evhtp-config.h.in
 	${EVHTP_DEPS_INSTALL}/include/evhtp/evhtp-config.h
@@ -84,6 +107,16 @@ configure_file(
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories (${EVHTP_DEPS_INSTALL}/include)
 link_directories    (${EVHTP_DEPS_INSTALL}/lib)
+
+if (EVHTP_ENABLE_REGEX)
+	include_directories (${EVHTP_DEPS_INSTALL}/include/evhtp/regex)
+	include_directories (${EVHTP_DEPS_INSTALL}/include/evhtp/regex/oniguruma)
+	include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/regex/oniguruma)
+	include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/regex/oniguruma/enc)
+	install (FILES
+		${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/regex/oniguruma/onigposix.h
+		DESTINATION ${INCLUDE_INSTALL_DIR}/evhtp/regex/oniguruma)
+endif()
 
 
 message(STATUS "CMAKE_BUILD_TYPE         : " ${CMAKE_BUILD_TYPE})

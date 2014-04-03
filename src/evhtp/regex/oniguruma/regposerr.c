@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#include "config.h"
+#include "oniguruma-config.h"
 #include "onigposix.h"
 
 #ifdef HAVE_STRING_H

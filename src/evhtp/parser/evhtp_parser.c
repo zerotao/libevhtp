@@ -8,25 +8,25 @@
 #include <unistd.h>
 
 #include "evhtp/internal.h"
-#include "evhtp/parser/htparser.h"
+#include "evhtp/parser/evhtp_parser.h"
 
 #ifdef PARSER_DEBUG
-#define __QUOTE(x)                  # x
-#define  _QUOTE(x)                  __QUOTE(x)
-#define htparse_debug_strlen(x)     strlen(x)
+#define __QUOTE(x)                       # x
+#define  _QUOTE(x)                       __QUOTE(x)
+#define evhtp_parser_debug_strlen(x)     strlen(x)
 
-#define htparse_log_debug(fmt, ...) do {                                                             \
-        time_t      t  = time(NULL);                                                                 \
-        struct tm * dm = localtime(&t);                                                              \
-                                                                                                     \
-        fprintf(stdout, "[%02d:%02d:%02d] htparse.c:[" _QUOTE(__LINE__) "]\t                %-26s: " \
-                fmt "\n", dm->tm_hour, dm->tm_min, dm->tm_sec, __func__, ## __VA_ARGS__);            \
-        fflush(stdout);                                                                              \
+#define evhtp_parser_log_debug(fmt, ...) do {                                                             \
+        time_t      t  = time(NULL);                                                                      \
+        struct tm * dm = localtime(&t);                                                                   \
+                                                                                                          \
+        fprintf(stdout, "[%02d:%02d:%02d] evhtp_parser.c:[" _QUOTE(__LINE__) "]\t                %-26s: " \
+                fmt "\n", dm->tm_hour, dm->tm_min, dm->tm_sec, __func__, ## __VA_ARGS__);                 \
+        fflush(stdout);                                                                                   \
 } while (0)
 
 #else
-#define htparse_debug_strlen(x)     0
-#define htparse_log_debug(fmt, ...) do {} while (0)
+#define evhtp_parser_debug_strlen(x)     0
+#define evhtp_parser_log_debug(fmt, ...) do {} while (0)
 #endif
 
 #if '\n' != '\x0a' || 'A' != 65
@@ -106,15 +106,15 @@ typedef enum parser_flags parser_flags;
 typedef enum parser_state parser_state;
 
 
-struct htparser {
-    htpparse_error error;
-    parser_state   state;
-    parser_flags   flags;
-    eval_hdr_val   heval;
+struct evhtp_parser {
+    evhtp_parser_error error;
+    parser_state       state;
+    parser_flags       flags;
+    eval_hdr_val       heval;
 
-    htp_type   type;
-    htp_scheme scheme;
-    htp_method method;
+    evhtp_parser_type   type;
+    evhtp_parser_scheme scheme;
+    evhtp_parser_method method;
 
     unsigned char multipart;
     unsigned char major;
@@ -135,7 +135,7 @@ struct htparser {
     void * userdata;
 
     unsigned int buf_idx;
-    /* Must be last since htparser_init memsets up to the offset of this buffer */
+    /* Must be last since evhtp_parser_init memsets up to the offset of this buffer */
     char buf[PARSER_STACK_MAX];
 };
 
@@ -162,19 +162,19 @@ static int8_t       unhex[256] = {
 };
 
 static const char * errstr_map[] = {
-    "htparse_error_none",
-    "htparse_error_too_big",
-    "htparse_error_invalid_method",
-    "htparse_error_invalid_requestline",
-    "htparse_error_invalid_schema",
-    "htparse_error_invalid_protocol",
-    "htparse_error_invalid_version",
-    "htparse_error_invalid_header",
-    "htparse_error_invalid_chunk_size",
-    "htparse_error_invalid_chunk",
-    "htparse_error_invalid_state",
-    "htparse_error_user",
-    "htparse_error_unknown"
+    "evhtp_parser_error_none",
+    "evhtp_parser_error_too_big",
+    "evhtp_parser_error_invalid_method",
+    "evhtp_parser_error_invalid_requestline",
+    "evhtp_parser_error_invalid_schema",
+    "evhtp_parser_error_invalid_protocol",
+    "evhtp_parser_error_invalid_version",
+    "evhtp_parser_error_invalid_header",
+    "evhtp_parser_error_invalid_chunk_size",
+    "evhtp_parser_error_invalid_chunk",
+    "evhtp_parser_error_invalid_state",
+    "evhtp_parser_error_user",
+    "evhtp_parser_error_unknown"
 };
 
 static const char * method_strmap[] = {
@@ -228,24 +228,24 @@ static const char * method_strmap[] = {
     && ((uint32_t *)m)[1] == ((c7 << 24) | (c6 << 16) | (c5 << 8) | c4) \
     && m[8] == c8
 
-#define __HTPARSE_GENHOOK(__n)                                                    \
-    static inline int hook_ ## __n ## _run(htparser * p, htparse_hooks * hooks) { \
-        htparse_log_debug("enter");                                               \
-        if (hooks && (hooks)->__n) {                                              \
-            return (hooks)->__n(p);                                               \
-        }                                                                         \
-                                                                                  \
-        return 0;                                                                 \
+#define __HTPARSE_GENHOOK(__n)                                                             \
+    static inline int hook_ ## __n ## _run(evhtp_parser * p, evhtp_parser_hooks * hooks) { \
+        evhtp_parser_log_debug("enter");                                                   \
+        if (hooks && (hooks)->__n) {                                                       \
+            return (hooks)->__n(p);                                                        \
+        }                                                                                  \
+                                                                                           \
+        return 0;                                                                          \
     }
 
-#define __HTPARSE_GENDHOOK(__n)                                                                             \
-    static inline int hook_ ## __n ## _run(htparser * p, htparse_hooks * hooks, const char * s, size_t l) { \
-        htparse_log_debug("enter");                                                                         \
-        if (hooks && (hooks)->__n) {                                                                        \
-            return (hooks)->__n(p, s, l);                                                                   \
-        }                                                                                                   \
-                                                                                                            \
-        return 0;                                                                                           \
+#define __HTPARSE_GENDHOOK(__n)                                                                                      \
+    static inline int hook_ ## __n ## _run(evhtp_parser * p, evhtp_parser_hooks * hooks, const char * s, size_t l) { \
+        evhtp_parser_log_debug("enter");                                                                             \
+        if (hooks && (hooks)->__n) {                                                                                 \
+            return (hooks)->__n(p, s, l);                                                                            \
+        }                                                                                                            \
+                                                                                                                     \
+        return 0;                                                                                                    \
     }
 
 __HTPARSE_GENHOOK(on_msg_begin)
@@ -325,29 +325,29 @@ _str_to_ssize_t(char * str, size_t n) {
     return value;
 }
 
-htpparse_error
-htparser_get_error(htparser * p) {
+evhtp_parser_error
+evhtp_parser_get_error(evhtp_parser * p) {
     return p->error;
 }
 
 const char *
-htparser_get_strerror(htparser * p) {
-    htpparse_error e = htparser_get_error(p);
+evhtp_parser_get_strerror(evhtp_parser * p) {
+    evhtp_parser_error e = evhtp_parser_get_error(p);
 
-    if (e > htparse_error_generic) {
-        return "htparse_no_such_error";
+    if (e > evhtp_parser_error_generic) {
+        return "evhtp_parser_no_such_error";
     }
 
     return errstr_map[e];
 }
 
 unsigned int
-htparser_get_status(htparser * p) {
+evhtp_parser_get_status(evhtp_parser * p) {
     return p->status;
 }
 
 int
-htparser_should_keep_alive(htparser * p) {
+evhtp_parser_should_keep_alive(evhtp_parser * p) {
     if (p->major > 0 && p->minor > 0) {
         if (p->flags & parser_flag_connection_close) {
             return 0;
@@ -365,19 +365,19 @@ htparser_should_keep_alive(htparser * p) {
     return 0;
 }
 
-htp_scheme
-htparser_get_scheme(htparser * p) {
+evhtp_parser_scheme
+evhtp_parser_get_scheme(evhtp_parser * p) {
     return p->scheme;
 }
 
-htp_method
-htparser_get_method(htparser * p) {
+evhtp_parser_method
+evhtp_parser_get_method(evhtp_parser * p) {
     return p->method;
 }
 
 const char *
-htparser_get_methodstr_m(htp_method meth) {
-    if (meth >= htp_method_UNKNOWN) {
+evhtp_parser_get_methodstr_m(evhtp_parser_method meth) {
+    if (meth >= evhtp_parser_method_UNKNOWN) {
         return NULL;
     }
 
@@ -385,91 +385,91 @@ htparser_get_methodstr_m(htp_method meth) {
 }
 
 const char *
-htparser_get_methodstr(htparser * p) {
-    return htparser_get_methodstr_m(p->method);
+evhtp_parser_get_methodstr(evhtp_parser * p) {
+    return evhtp_parser_get_methodstr_m(p->method);
 }
 
 void
-htparser_set_major(htparser * p, unsigned char major) {
+evhtp_parser_set_major(evhtp_parser * p, unsigned char major) {
     p->major = major;
 }
 
 void
-htparser_set_minor(htparser * p, unsigned char minor) {
+evhtp_parser_set_minor(evhtp_parser * p, unsigned char minor) {
     p->minor = minor;
 }
 
 unsigned char
-htparser_get_major(htparser * p) {
+evhtp_parser_get_major(evhtp_parser * p) {
     return p->major;
 }
 
 unsigned char
-htparser_get_minor(htparser * p) {
+evhtp_parser_get_minor(evhtp_parser * p) {
     return p->minor;
 }
 
 unsigned char
-htparser_get_multipart(htparser * p) {
+evhtp_parser_get_multipart(evhtp_parser * p) {
     return p->multipart;
 }
 
 void *
-htparser_get_userdata(htparser * p) {
+evhtp_parser_get_userdata(evhtp_parser * p) {
     return p->userdata;
 }
 
 void
-htparser_set_userdata(htparser * p, void * ud) {
+evhtp_parser_set_userdata(evhtp_parser * p, void * ud) {
     p->userdata = ud;
 }
 
 uint64_t
-htparser_get_content_pending(htparser * p) {
+evhtp_parser_get_content_pending(evhtp_parser * p) {
     return p->content_len;
 }
 
 uint64_t
-htparser_get_content_length(htparser * p) {
+evhtp_parser_get_content_length(evhtp_parser * p) {
     return p->orig_content_len;
 }
 
 uint64_t
-htparser_get_bytes_read(htparser * p) {
+evhtp_parser_get_bytes_read(evhtp_parser * p) {
     return p->bytes_read;
 }
 
 uint64_t
-htparser_get_total_bytes_read(htparser * p) {
+evhtp_parser_get_total_bytes_read(evhtp_parser * p) {
     return p->total_bytes_read;
 }
 
 void
-htparser_init(htparser * p, htp_type type) {
+evhtp_parser_init(evhtp_parser * p, evhtp_parser_type type) {
     /* Do not memset entire string buffer. */
-    memset(p, 0, offsetof(htparser, buf));
+    memset(p, 0, offsetof(evhtp_parser, buf));
     p->buf[0] = '\0';
     p->state  = s_start;
-    p->error  = htparse_error_none;
-    p->method = htp_method_UNKNOWN;
+    p->error  = evhtp_parser_error_none;
+    p->method = evhtp_parser_method_UNKNOWN;
     p->type   = type;
 }
 
-htparser *
-htparser_new(void) {
-    return malloc(sizeof(htparser));
+evhtp_parser *
+evhtp_parser_new(void) {
+    return malloc(sizeof(evhtp_parser));
 }
 
 size_t
-htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len) {
+evhtp_parser_run(evhtp_parser * p, evhtp_parser_hooks * hooks, const char * data, size_t len) {
     unsigned char ch;
     char          c;
     size_t        i;
 
-    htparse_log_debug("enter");
-    htparse_log_debug("p == %p", p);
+    evhtp_parser_log_debug("enter");
+    evhtp_parser_log_debug("p == %p", p);
 
-    p->error      = htparse_error_none;
+    p->error      = evhtp_parser_error_none;
     p->bytes_read = 0;
 
     for (i = 0; i < len; i++) {
@@ -478,10 +478,10 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
 
         ch = data[i];
 
-        htparse_log_debug("[%p] data[%d] = %c (%x)", p, i, isprint(ch) ? ch : ' ', ch);
+        evhtp_parser_log_debug("[%p] data[%d] = %c (%x)", p, i, isprint(ch) ? ch : ' ', ch);
 
         if (p->buf_idx >= sizeof(p->buf)) {
-            p->error = htparse_error_too_big;
+            p->error = evhtp_parser_error_too_big;
             return i + 1;
         }
 
@@ -490,11 +490,11 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
 
         switch (p->state) {
             case s_start:
-                htparse_log_debug("[%p] s_start", p);
+                evhtp_parser_log_debug("[%p] s_start", p);
 
                 p->flags            = 0;
-                p->error            = htparse_error_none;
-                p->method           = htp_method_UNKNOWN;
+                p->error            = evhtp_parser_error_none;
+                p->method           = evhtp_parser_method_UNKNOWN;
                 p->multipart        = 0;
                 p->major            = 0;
                 p->minor            = 0;
@@ -514,7 +514,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 }
 
                 if ((ch < 'A' || ch > 'Z') && ch != '_') {
-                    p->error = htparse_error_inval_reqline;
+                    p->error = evhtp_parser_error_inval_reqline;
                     return i + 1;
                 }
 
@@ -523,24 +523,24 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 p->buf[p->buf_idx++] = ch;
                 p->buf[p->buf_idx]   = '\0';
 
-                if (p->type == htp_type_request) {
+                if (p->type == evhtp_parser_type_request) {
                     p->state = s_method;
-                } else if (p->type == htp_type_response && ch == 'H') {
+                } else if (p->type == evhtp_parser_type_response && ch == 'H') {
                     p->state = s_http_H;
                 } else {
-                    p->error = htparse_error_inval_reqline;
+                    p->error = evhtp_parser_error_inval_reqline;
                     return i + 1;
                 }
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
 
             case s_method:
-                htparse_log_debug("[%p] s_method", p);
+                evhtp_parser_log_debug("[%p] s_method", p);
 
                 if (ch == ' ') {
                     char * m = p->buf;
@@ -548,12 +548,12 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                     switch (p->buf_idx) {
                         case 3:
                             if (_str3_cmp(m, 'G', 'E', 'T', '\0')) {
-                                p->method = htp_method_GET;
+                                p->method = evhtp_parser_method_GET;
                                 break;
                             }
 
                             if (_str3_cmp(m, 'P', 'U', 'T', '\0')) {
-                                p->method = htp_method_PUT;
+                                p->method = evhtp_parser_method_PUT;
                                 break;
                             }
 
@@ -561,77 +561,77 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         case 4:
                             if (m[1] == 'O') {
                                 if (_str3Ocmp(m, 'P', 'O', 'S', 'T')) {
-                                    p->method = htp_method_POST;
+                                    p->method = evhtp_parser_method_POST;
                                     break;
                                 }
 
                                 if (_str3Ocmp(m, 'C', 'O', 'P', 'Y')) {
-                                    p->method = htp_method_COPY;
+                                    p->method = evhtp_parser_method_COPY;
                                     break;
                                 }
 
                                 if (_str3Ocmp(m, 'M', 'O', 'V', 'E')) {
-                                    p->method = htp_method_MOVE;
+                                    p->method = evhtp_parser_method_MOVE;
                                     break;
                                 }
 
                                 if (_str3Ocmp(m, 'L', 'O', 'C', 'K')) {
-                                    p->method = htp_method_LOCK;
+                                    p->method = evhtp_parser_method_LOCK;
                                     break;
                                 }
                             } else {
                                 if (_str4cmp(m, 'H', 'E', 'A', 'D')) {
-                                    p->method = htp_method_HEAD;
+                                    p->method = evhtp_parser_method_HEAD;
                                     break;
                                 }
                             }
                             break;
                         case 5:
                             if (_str5cmp(m, 'M', 'K', 'C', 'O', 'L')) {
-                                p->method = htp_method_MKCOL;
+                                p->method = evhtp_parser_method_MKCOL;
                                 break;
                             }
 
                             if (_str5cmp(m, 'T', 'R', 'A', 'C', 'E')) {
-                                p->method = htp_method_TRACE;
+                                p->method = evhtp_parser_method_TRACE;
                                 break;
                             }
 
                             if (_str5cmp(m, 'P', 'A', 'T', 'C', 'H')) {
-                                p->method = htp_method_PATCH;
+                                p->method = evhtp_parser_method_PATCH;
                                 break;
                             }
                             break;
                         case 6:
                             if (_str6cmp(m, 'D', 'E', 'L', 'E', 'T', 'E')) {
-                                p->method = htp_method_DELETE;
+                                p->method = evhtp_parser_method_DELETE;
                                 break;
                             }
 
                             if (_str6cmp(m, 'U', 'N', 'L', 'O', 'C', 'K')) {
-                                p->method = htp_method_UNLOCK;
+                                p->method = evhtp_parser_method_UNLOCK;
                                 break;
                             }
                             break;
                         case 7:
                             if (_str7_cmp(m, 'O', 'P', 'T', 'I', 'O', 'N', 'S', '\0')) {
-                                p->method = htp_method_OPTIONS;
+                                p->method = evhtp_parser_method_OPTIONS;
                             }
 
                             if (_str7_cmp(m, 'C', 'O', 'N', 'N', 'E', 'C', 'T', '\0')) {
-                                p->method = htp_method_CONNECT;
+                                p->method = evhtp_parser_method_CONNECT;
                             }
                             break;
                         case 8:
                             if (_str8cmp(m, 'P', 'R', 'O', 'P', 'F', 'I', 'N', 'D')) {
-                                p->method = htp_method_PROPFIND;
+                                p->method = evhtp_parser_method_PROPFIND;
                             }
 
                             break;
 
                         case 9:
                             if (_str9cmp(m, 'P', 'R', 'O', 'P', 'P', 'A', 'T', 'C', 'H')) {
-                                p->method = htp_method_PROPPATCH;
+                                p->method = evhtp_parser_method_PROPPATCH;
                             }
                             break;
                     } /* switch */
@@ -641,7 +641,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                     p->state   = s_spaces_before_uri;
 
                     if (res) {
-                        p->error = htparse_error_user;
+                        p->error = evhtp_parser_error_user;
                         return i + 1;
                     }
 
@@ -649,7 +649,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 }
 
                 if ((ch < 'A' || ch > 'Z') && ch != '_') {
-                    p->error = htparse_error_inval_method;
+                    p->error = evhtp_parser_error_inval_method;
                     return i + 1;
                 }
 
@@ -658,7 +658,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
 
                 break;
             case s_spaces_before_uri:
-                htparse_log_debug("[%p] s_spaces_before_uri", p);
+                evhtp_parser_log_debug("[%p] s_spaces_before_uri", p);
 
                 switch (ch) {
                     case ' ':
@@ -681,13 +681,13 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                             break;
                         }
 
-                        p->error = htparse_error_inval_reqline;
+                        p->error = evhtp_parser_error_inval_reqline;
                         return i + 1;
                 } /* switch */
 
                 break;
             case s_schema:
-                htparse_log_debug("[%p] s_schema", p);
+                evhtp_parser_log_debug("[%p] s_schema", p);
 
                 c = (unsigned char)(ch | 0x20);
 
@@ -699,60 +699,57 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
 
                 switch (ch) {
                     case ':':
-                        p->scheme = htp_scheme_unknown;
+                        p->scheme = evhtp_parser_scheme_unknown;
 
                         switch (p->buf_idx) {
                             case 3:
                                 if (_str3_cmp(p->scheme_offset, 'f', 't', 'p', '\0')) {
-                                    p->scheme = htp_scheme_ftp;
+                                    p->scheme = evhtp_parser_scheme_ftp;
                                     break;
                                 }
 
                                 if (_str3_cmp(p->scheme_offset, 'n', 'f', 's', '\0')) {
-                                    p->scheme = htp_scheme_nfs;
+                                    p->scheme = evhtp_parser_scheme_nfs;
                                     break;
                                 }
 
                                 break;
                             case 4:
                                 if (_str4cmp(p->scheme_offset, 'h', 't', 't', 'p')) {
-                                    p->scheme = htp_scheme_http;
+                                    p->scheme = evhtp_parser_scheme_http;
                                     break;
                                 }
                                 break;
                             case 5:
                                 if (_str5cmp(p->scheme_offset, 'h', 't', 't', 'p', 's')) {
-                                    p->scheme = htp_scheme_https;
+                                    p->scheme = evhtp_parser_scheme_https;
                                     break;
                                 }
                                 break;
                         } /* switch */
 
-                        res                  = hook_scheme_run(p, hooks, p->scheme_offset, (&p->buf[p->buf_idx] - p->scheme_offset));
+                        res = hook_scheme_run(p, hooks, p->scheme_offset,
+                                              (&p->buf[p->buf_idx] - p->scheme_offset));
 
-#if 0
-                        p->buf_idx           = 0;
-                        p->buf[0]            = '\0';
-#endif
                         p->buf[p->buf_idx++] = ch;
                         p->buf[p->buf_idx]   = '\0';
 
-                        p->state             = s_schema_slash;
+                        p->state = s_schema_slash;
 
                         if (res) {
-                            p->error = htparse_error_user;
+                            p->error = evhtp_parser_error_user;
                             return i + 1;
                         }
 
                         break;
                     default:
-                        p->error = htparse_error_inval_schema;
+                        p->error = evhtp_parser_error_inval_schema;
                         return i + 1;
                 } /* switch */
 
                 break;
             case s_schema_slash:
-                htparse_log_debug("[%p] s_schema_slash", p);
+                evhtp_parser_log_debug("[%p] s_schema_slash", p);
 
                 switch (ch) {
                     case '/':
@@ -762,12 +759,12 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_schema_slash_slash;
                         break;
                     default:
-                        p->error = htparse_error_inval_schema;
+                        p->error = evhtp_parser_error_inval_schema;
                         return i + 1;
                 }
                 break;
             case s_schema_slash_slash:
-                htparse_log_debug("[%p] s_schema_slash_slash", p);
+                evhtp_parser_log_debug("[%p] s_schema_slash_slash", p);
 
                 switch (ch) {
                     case '/':
@@ -778,7 +775,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_host;
                         break;
                     default:
-                        p->error = htparse_error_inval_schema;
+                        p->error = evhtp_parser_error_inval_schema;
                         return i + 1;
                 }
                 break;
@@ -806,9 +803,11 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                     break;
                 }
 
-                res = hook_host_run(p, hooks, p->host_offset, (&p->buf[p->buf_idx] - p->host_offset));
+                res = hook_host_run(p, hooks, p->host_offset,
+                                    (&p->buf[p->buf_idx] - p->host_offset));
+
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
@@ -832,7 +831,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                          * check anyway
                          */
                         if (i == 0) {
-                            p->error = htparse_error_inval_state;
+                            p->error = evhtp_parser_error_inval_state;
                             return i + 1;
                         }
 
@@ -850,12 +849,12 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_after_slash_in_uri;
                         break;
                     default:
-                        p->error = htparse_error_inval_schema;
+                        p->error = evhtp_parser_error_inval_schema;
                         return i + 1;
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
@@ -875,7 +874,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         res = hook_host_run(p, hooks, p->host_offset,
                                             (&p->buf[p->buf_idx] - p->host_offset));
                         if (res) {
-                            p->error = htparse_error_user;
+                            p->error = evhtp_parser_error_user;
                             return i + 1;
                         }
                         p->buf[p->buf_idx++] = ch;
@@ -883,7 +882,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_host_done;
                         break;
                     default:
-                        p->error = htparse_error_inval_schema;
+                        p->error = evhtp_parser_error_inval_schema;
                         return i + 1;
                 }
                 break;
@@ -905,7 +904,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                          * check anyway
                          */
                         if (i == 0) {
-                            p->error = htparse_error_inval_state;
+                            p->error = evhtp_parser_error_inval_state;
                             return i + 1;
                         }
 
@@ -922,18 +921,18 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_after_slash_in_uri;
                         break;
                     default:
-                        p->error = htparse_error_inval_reqline;
+                        p->error = evhtp_parser_error_inval_reqline;
                         return i + 1;
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
             case s_after_slash_in_uri:
-                htparse_log_debug("[%p] s_after_slash_in_uri", p);
+                evhtp_parser_log_debug("[%p] s_after_slash_in_uri", p);
 
                 res = 0;
 
@@ -995,14 +994,14 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
 
             case s_check_uri:
-                htparse_log_debug("[%p] s_check_uri", p);
+                evhtp_parser_log_debug("[%p] s_check_uri", p);
 
                 res = 0;
 
@@ -1052,7 +1051,9 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state             = s_hdrline_start;
                         break;
                     case '?':
-                        res                  = hook_path_run(p, hooks, p->path_offset, (&p->buf[p->buf_idx] - p->path_offset));
+                        res                  = hook_path_run(p, hooks,
+                                                             p->path_offset,
+                                                             (&p->buf[p->buf_idx] - p->path_offset));
 
                         p->buf[p->buf_idx++] = ch;
                         p->buf[p->buf_idx]   = '\0';
@@ -1069,14 +1070,14 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
 
             case s_uri:
-                htparse_log_debug("[%p] s_uri", p);
+                evhtp_parser_log_debug("[%p] s_uri", p);
 
                 res = 0;
 
@@ -1141,14 +1142,14 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
 
             case s_http_09:
-                htparse_log_debug("[%p] s_http_09", p);
+                evhtp_parser_log_debug("[%p] s_http_09", p);
 
                 switch (ch) {
                     case ' ':
@@ -1168,20 +1169,20 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state   = s_http_H;
                         break;
                     default:
-                        p->error   = htparse_error_inval_proto;
+                        p->error   = evhtp_parser_error_inval_proto;
                         return i + 1;
                 } /* switch */
 
                 break;
             case s_http_H:
-                htparse_log_debug("[%p] s_http_H", p);
+                evhtp_parser_log_debug("[%p] s_http_H", p);
 
                 switch (ch) {
                     case 'T':
                         p->state = s_http_HT;
                         break;
                     default:
-                        p->error = htparse_error_inval_proto;
+                        p->error = evhtp_parser_error_inval_proto;
                         return i + 1;
                 }
                 break;
@@ -1191,7 +1192,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_http_HTT;
                         break;
                     default:
-                        p->error = htparse_error_inval_proto;
+                        p->error = evhtp_parser_error_inval_proto;
                         return i + 1;
                 }
                 break;
@@ -1201,7 +1202,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_http_HTTP;
                         break;
                     default:
-                        p->error = htparse_error_inval_proto;
+                        p->error = evhtp_parser_error_inval_proto;
                         return i + 1;
                 }
                 break;
@@ -1211,13 +1212,13 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_first_major_digit;
                         break;
                     default:
-                        p->error = htparse_error_inval_proto;
+                        p->error = evhtp_parser_error_inval_proto;
                         return i + 1;
                 }
                 break;
             case s_first_major_digit:
                 if (ch < '1' || ch > '9') {
-                    p->error = htparse_error_inval_ver;
+                    p->error = evhtp_parser_error_inval_ver;
                     return i + 1;
                 }
 
@@ -1231,7 +1232,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 }
 
                 if (ch < '0' || ch > '9') {
-                    p->error = htparse_error_inval_ver;
+                    p->error = evhtp_parser_error_inval_ver;
                     return i + 1;
                 }
 
@@ -1239,7 +1240,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 break;
             case s_first_minor_digit:
                 if (ch < '0' || ch > '9') {
-                    p->error = htparse_error_inval_ver;
+                    p->error = evhtp_parser_error_inval_ver;
                     return i + 1;
                 }
 
@@ -1249,9 +1250,9 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
             case s_minor_digit:
                 switch (ch) {
                     case ' ':
-                        if (p->type == htp_type_request) {
+                        if (p->type == evhtp_parser_type_request) {
                             p->state = s_spaces_after_digit;
-                        } else if (p->type == htp_type_response) {
+                        } else if (p->type == evhtp_parser_type_response) {
                             p->state = s_status;
                         }
 
@@ -1261,11 +1262,11 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         break;
                     case LF:
                         /* LF without a CR? error.... */
-                        p->error = htparse_error_inval_reqline;
+                        p->error = evhtp_parser_error_inval_reqline;
                         return i + 1;
                     default:
                         if (ch < '0' || ch > '9') {
-                            p->error = htparse_error_inval_ver;
+                            p->error = evhtp_parser_error_inval_ver;
                             return i + 1;
                         }
 
@@ -1283,7 +1284,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 }
 
                 if (ch < '0' || ch > '9') {
-                    p->error = htparse_error_status;
+                    p->error = evhtp_parser_error_status;
                     return i + 1;
                 }
 
@@ -1306,7 +1307,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_hdrline_start;
                         break;
                     default:
-                        p->error = htparse_error_generic;
+                        p->error = evhtp_parser_error_generic;
                         return i + 1;
                 }
                 break;
@@ -1333,7 +1334,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_hdrline_start;
                         break;
                     default:
-                        p->error = htparse_error_inval_ver;
+                        p->error = evhtp_parser_error_inval_ver;
                         return i + 1;
                 }
                 break;
@@ -1341,11 +1342,11 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
             case s_almost_done:
                 switch (ch) {
                     case LF:
-                        if (p->type == htp_type_response && p->status >= 100 && p->status < 200) {
+                        if (p->type == evhtp_parser_type_response && p->status >= 100 && p->status < 200) {
                             res = hook_on_hdrs_begin_run(p, hooks);
 
                             if (res) {
-                                p->error = htparse_error_user;
+                                p->error = evhtp_parser_error_user;
                                 return i + 1;
                             }
 
@@ -1358,12 +1359,12 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                         p->state = s_done;
                         res      = hook_on_hdrs_begin_run(p, hooks);
                         if (res) {
-                            p->error = htparse_error_user;
+                            p->error = evhtp_parser_error_user;
                             return i + 1;
                         }
                         break;
                     default:
-                        p->error = htparse_error_inval_reqline;
+                        p->error = evhtp_parser_error_inval_reqline;
                         return i + 1;
                 } /* switch */
                 break;
@@ -1380,7 +1381,7 @@ htparser_run(htparser * p, htparse_hooks * hooks, const char * data, size_t len)
                 break;
 hdrline_start:
             case s_hdrline_start:
-                htparse_log_debug("[%p] s_hdrline_start", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_start", p);
 
                 p->buf_idx = 0;
 
@@ -1401,7 +1402,7 @@ hdrline_start:
 
                 break;
             case s_hdrline_hdr_key:
-                htparse_log_debug("[%p] s_hdrline_hdr_key", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_hdr_key", p);
 
                 res = 0;
                 switch (ch) {
@@ -1461,13 +1462,13 @@ hdrline_start:
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
             case s_hdrline_hdr_space_before_val:
-                htparse_log_debug("[%p] s_hdrline_hdr_space_before_val", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_hdr_space_before_val", p);
 
                 switch (ch) {
                     case ' ':
@@ -1492,7 +1493,7 @@ hdrline_start:
                         /* never got a CR for an empty header, this is an
                          * invalid state.
                          */
-                        p->error             = htparse_error_inval_hdr;
+                        p->error             = evhtp_parser_error_inval_hdr;
                         return i + 1;
                     default:
                         p->buf[p->buf_idx++] = ch;
@@ -1502,7 +1503,7 @@ hdrline_start:
                 } /* switch */
                 break;
             case s_hdrline_hdr_val:
-                htparse_log_debug("[%p] s_hdrline_hdr_val", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_hdr_val", p);
                 err = 0;
                 res = 0;
 
@@ -1512,16 +1513,18 @@ hdrline_start:
                             case eval_hdr_val_none:
                                 break;
                             case eval_hdr_val_hostname:
-                                res = hook_hostname_run(p, hooks, p->buf, p->buf_idx);
+                                res = hook_hostname_run(p, hooks,
+                                                        p->buf, p->buf_idx);
                                 break;
                             case eval_hdr_val_content_length:
                                 p->content_len      = str_to_uint64(p->buf, p->buf_idx, &err);
                                 p->orig_content_len = p->content_len;
 
-                                htparse_log_debug("[%p] s_hdrline_hdr_val content-lenth = %zu", p, p->content_len);
+                                evhtp_parser_log_debug("[%p] s_hdrline_hdr_val content-lenth = %zu",
+                                                       p, p->content_len);
 
                                 if (err == 1) {
-                                    p->error = htparse_error_too_big;
+                                    p->error = evhtp_parser_error_too_big;
                                     return i + 1;
                                 }
 
@@ -1596,7 +1599,7 @@ hdrline_start:
                         break;
                     case LF:
                         /* LF before CR? invalid */
-                        p->error             = htparse_error_inval_hdr;
+                        p->error             = evhtp_parser_error_inval_hdr;
                         return i + 1;
                     default:
                         p->buf[p->buf_idx++] = ch;
@@ -1605,13 +1608,13 @@ hdrline_start:
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
             case s_hdrline_hdr_almost_done:
-                htparse_log_debug("[%p] s_hdrline_hdr_almost_done", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_hdr_almost_done", p);
 
                 res = 0;
                 switch (ch) {
@@ -1625,18 +1628,18 @@ hdrline_start:
                         p->state = s_hdrline_hdr_done;
                         break;
                     default:
-                        p->error = htparse_error_inval_hdr;
+                        p->error = evhtp_parser_error_inval_hdr;
                         return i + 1;
                 }
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
             case s_hdrline_hdr_done:
-                htparse_log_debug("[%p] s_hdrline_hdr_done", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_hdr_done", p);
 
                 switch (ch) {
                     case CR:
@@ -1644,21 +1647,21 @@ hdrline_start:
                         p->state = s_hdrline_almost_done;
 
                         if (res) {
-                            p->error = htparse_error_user;
+                            p->error = evhtp_parser_error_user;
                             return i + 1;
                         }
 
                         res = hook_on_hdrs_complete_run(p, hooks);
 
                         if (res) {
-                            p->error = htparse_error_user;
+                            p->error = evhtp_parser_error_user;
                             return i + 1;
                         }
 
                         break;
                     case LF:
                         /* got LFLF? is this valid? */
-                        p->error             = htparse_error_inval_hdr;
+                        p->error             = evhtp_parser_error_inval_hdr;
 
                         return i + 1;
                     case '\t':
@@ -1676,7 +1679,7 @@ hdrline_start:
                         p->state             = s_hdrline_hdr_key;
 
                         if (res) {
-                            p->error = htparse_error_user;
+                            p->error = evhtp_parser_error_user;
                             return i + 1;
                         }
 
@@ -1684,14 +1687,14 @@ hdrline_start:
                 } /* switch */
                 break;
             case s_hdrline_almost_done:
-                htparse_log_debug("[%p] s_hdrline_almost_done", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_almost_done", p);
 
                 res = 0;
 
                 switch (ch) {
                     case LF:
                         p->buf_idx = 0;
-                        htparse_log_debug("[%p] HERE", p);
+                        evhtp_parser_log_debug("[%p] HERE", p);
 
                         if (p->flags & parser_flag_trailing) {
                             res      = hook_on_msg_complete_run(p, hooks);
@@ -1708,23 +1711,23 @@ hdrline_start:
                         }
 
                         if (res) {
-                            p->error = htparse_error_user;
+                            p->error = evhtp_parser_error_user;
                             return i + 1;
                         }
                         break;
                     default:
-                        p->error = htparse_error_inval_hdr;
+                        p->error = evhtp_parser_error_inval_hdr;
                         return i + 1;
                 } /* switch */
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
                 break;
             case s_hdrline_done:
-                htparse_log_debug("[%p] s_hdrline_done", p);
+                evhtp_parser_log_debug("[%p] s_hdrline_done", p);
 
                 res = 0;
 
@@ -1743,7 +1746,7 @@ hdrline_start:
                     p->state = s_start;
                 }
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
@@ -1752,7 +1755,7 @@ hdrline_start:
                 c = unhex[(unsigned char)ch];
 
                 if (c == -1) {
-                    p->error = htparse_error_inval_chunk_sz;
+                    p->error = evhtp_parser_error_inval_chunk_sz;
                     return i + 1;
                 }
 
@@ -1768,7 +1771,7 @@ hdrline_start:
                 c = unhex[(unsigned char)ch];
 
                 if (c == -1) {
-                    p->error = htparse_error_inval_chunk_sz;
+                    p->error = evhtp_parser_error_inval_chunk_sz;
                     return i + 1;
                 }
 
@@ -1780,7 +1783,7 @@ hdrline_start:
                 res = 0;
 
                 if (ch != LF) {
-                    p->error = htparse_error_inval_chunk_sz;
+                    p->error = evhtp_parser_error_inval_chunk_sz;
                     return i + 1;
                 }
 
@@ -1798,7 +1801,7 @@ hdrline_start:
                 }
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
@@ -1825,7 +1828,7 @@ hdrline_start:
                 }
 
                 if (res) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
@@ -1833,7 +1836,7 @@ hdrline_start:
 
             case s_chunk_data_almost_done:
                 if (ch != CR) {
-                    p->error = htparse_error_inval_chunk;
+                    p->error = evhtp_parser_error_inval_chunk;
                     return i + 1;
                 }
 
@@ -1842,7 +1845,7 @@ hdrline_start:
 
             case s_chunk_data_done:
                 if (ch != LF) {
-                    p->error = htparse_error_inval_chunk;
+                    p->error = evhtp_parser_error_inval_chunk;
                     return i + 1;
                 }
 
@@ -1850,7 +1853,7 @@ hdrline_start:
                 p->state = s_chunk_size_start;
 
                 if (hook_on_chunk_complete_run(p, hooks)) {
-                    p->error = htparse_error_user;
+                    p->error = evhtp_parser_error_user;
                     return i + 1;
                 }
 
@@ -1877,7 +1880,7 @@ hdrline_start:
                     }
 
                     if (res) {
-                        p->error = htparse_error_user;
+                        p->error = evhtp_parser_error_user;
                         return i + 1;
                     }
                 }
@@ -1885,33 +1888,33 @@ hdrline_start:
                 break;
 
             default:
-                htparse_log_debug("[%p] This is a silly state....", p);
-                p->error = htparse_error_inval_state;
+                evhtp_parser_log_debug("[%p] This is a silly state....", p);
+                p->error = evhtp_parser_error_inval_state;
                 return i + 1;
         } /* switch */
     }
 
     return i;
-}         /* htparser_run */
+}         /* evhtp_parser_run */
 
-EXPORT_SYMBOL(htparser_run);
-EXPORT_SYMBOL(htparser_should_keep_alive);
-EXPORT_SYMBOL(htparser_get_scheme);
-EXPORT_SYMBOL(htparser_get_method);
-EXPORT_SYMBOL(htparser_get_methodstr);
-EXPORT_SYMBOL(htparser_get_methodstr_m);
-EXPORT_SYMBOL(htparser_set_major);
-EXPORT_SYMBOL(htparser_set_minor);
-EXPORT_SYMBOL(htparser_get_major);
-EXPORT_SYMBOL(htparser_get_minor);
-EXPORT_SYMBOL(htparser_get_multipart);
-EXPORT_SYMBOL(htparser_get_status);
-EXPORT_SYMBOL(htparser_get_content_length);
-EXPORT_SYMBOL(htparser_get_content_pending);
-EXPORT_SYMBOL(htparser_get_total_bytes_read);
-EXPORT_SYMBOL(htparser_get_error);
-EXPORT_SYMBOL(htparser_get_strerror);
-EXPORT_SYMBOL(htparser_get_userdata);
-EXPORT_SYMBOL(htparser_set_userdata);
-EXPORT_SYMBOL(htparser_init);
-EXPORT_SYMBOL(htparser_new);
+EXPORT_SYMBOL(evhtp_parser_run);
+EXPORT_SYMBOL(evhtp_parser_should_keep_alive);
+EXPORT_SYMBOL(evhtp_parser_get_scheme);
+EXPORT_SYMBOL(evhtp_parser_get_method);
+EXPORT_SYMBOL(evhtp_parser_get_methodstr);
+EXPORT_SYMBOL(evhtp_parser_get_methodstr_m);
+EXPORT_SYMBOL(evhtp_parser_set_major);
+EXPORT_SYMBOL(evhtp_parser_set_minor);
+EXPORT_SYMBOL(evhtp_parser_get_major);
+EXPORT_SYMBOL(evhtp_parser_get_minor);
+EXPORT_SYMBOL(evhtp_parser_get_multipart);
+EXPORT_SYMBOL(evhtp_parser_get_status);
+EXPORT_SYMBOL(evhtp_parser_get_content_length);
+EXPORT_SYMBOL(evhtp_parser_get_content_pending);
+EXPORT_SYMBOL(evhtp_parser_get_total_bytes_read);
+EXPORT_SYMBOL(evhtp_parser_get_error);
+EXPORT_SYMBOL(evhtp_parser_get_strerror);
+EXPORT_SYMBOL(evhtp_parser_get_userdata);
+EXPORT_SYMBOL(evhtp_parser_set_userdata);
+EXPORT_SYMBOL(evhtp_parser_init);
+EXPORT_SYMBOL(evhtp_parser_new);

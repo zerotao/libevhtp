@@ -31,7 +31,7 @@
 
 #ifndef PACKAGE
 /* PACKAGE is defined in config.h */
-#include "config.h"
+#include "oniguruma-config.h"
 #endif
 
 #ifdef ONIG_ESCAPE_UCHAR_COLLISION
