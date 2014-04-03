@@ -15,7 +15,5 @@
          (var) = (tvar))
 #endif
 
-
-
 #endif
 

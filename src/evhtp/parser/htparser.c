@@ -7,8 +7,8 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "htparse.h"
-#include "evhtp-internal.h"
+#include "evhtp/internal.h"
+#include "evhtp/parser/htparser.h"
 
 #ifdef PARSER_DEBUG
 #define __QUOTE(x)                  # x
