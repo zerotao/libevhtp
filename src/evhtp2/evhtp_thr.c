@@ -19,8 +19,8 @@
 #include <event2/event.h>
 #include <event2/thread.h>
 
-#include "evhtp2/internal.h"
-#include "evhtp2/evthr/evhtp_thr.h"
+#include "evhtp2/evhtp-internal.h"
+#include "evhtp2/evhtp_thr.h"
 
 typedef struct evhtp_thr_cmd        evhtp_thr_cmd_t;
 typedef struct evhtp_thr_pool_slist evhtp_thr_pool_slist_t;
@@ -39,17 +39,17 @@ struct evhtp_thr_pool {
 };
 
 struct evhtp_thr {
-    int               rdr;
-    int               wdr;
-    char              err;
-    ev_t            * event;
-    evbase_t        * evbase;
-    pthread_mutex_t   lock;
-    pthread_mutex_t   rlock;
-    pthread_t       * thr;
-    evhtp_thr_init_cb init_cb;
-    void            * arg;
-    void            * aux;
+    int                 rdr;
+    int                 wdr;
+    char                err;
+    struct event      * event;
+    struct event_base * evbase;
+    pthread_mutex_t     lock;
+    pthread_mutex_t     rlock;
+    pthread_t         * thr;
+    evhtp_thr_init_cb   init_cb;
+    void              * arg;
+    void              * aux;
 
     TAILQ_ENTRY(evhtp_thr) next;
 };
@@ -174,7 +174,7 @@ evhtp_thr_stop(evhtp_thr_t * thread) {
     return EVHTP_THR_RES_OK;
 }
 
-evbase_t *
+struct event_base *
 evhtp_thr_get_base(evhtp_thr_t * thr) {
     return thr->evbase;
 }

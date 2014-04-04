@@ -1,5 +1,5 @@
-#ifndef __EVHTP_PARSER_PARSER_H_
-#define __EVHTP_PARSER_PARSEr_H__
+#ifndef __EVHTP_PARSER_H__
+#define __EVHTP_PARSER_H__
 
 struct evhtp_parser;
 
