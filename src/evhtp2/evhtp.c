@@ -218,12 +218,14 @@ static evhtp_parser_hooks request_psets = {
     .on_msg_complete    = _evhtp_request_parser_fini
 };
 
+#if 0
 #ifdef EVHTP_ENABLE_SSL
 static int             session_id_context    = 1;
 #ifdef EVHTP_ENABLE_EVTHR
 static int             ssl_num_locks;
 static evhtp_mutex_t * ssl_locks;
 static int             ssl_locks_initialized = 0;
+#endif
 #endif
 #endif
 
@@ -948,6 +950,11 @@ _evhtp_request_find_vhost(evhtp_t * evhtp, const char * name) {
     }
 
     return NULL;
+}
+
+inline evhtp_t *
+evhtp_request_find_vhost(evhtp_t * evhtp, const char * name) {
+    return _evhtp_request_find_vhost(evhtp, name);
 }
 
 static inline int
@@ -1867,6 +1874,7 @@ _evhtp_accept_cb(struct evconnlistener * serv, int fd, struct sockaddr * s, int 
 }
 
 #ifdef EVHTP_ENABLE_SSL
+#if 0
 #ifdef EVHTP_ENABLE_EVTHR
 static unsigned long
 _evhtp_ssl_get_thread_id(void) {
@@ -1889,6 +1897,9 @@ _evhtp_ssl_thread_lock(int mode, int type, const char * file, int line) {
 }
 
 #endif
+#endif
+
+#if 0
 static void
 _evhtp_ssl_delete_cache_ent(evhtp_ssl_ctx_t * ctx, evhtp_ssl_sess_t * sess) {
     evhtp_t         * htp;
@@ -1986,6 +1997,7 @@ _evhtp_ssl_servername(evhtp_ssl_t * ssl, int * unused, void * arg) {
     return SSL_TLSEXT_ERR_NOACK;
 } /* _evhtp_ssl_servername */
 
+#endif
 #endif
 
 /*
@@ -2780,7 +2792,7 @@ evhtp_bind_sockaddr(evhtp_t * htp, struct sockaddr * sa, size_t sin_len, int bac
          */
         if (TAILQ_FIRST(&htp->vhosts) != NULL) {
             SSL_CTX_set_tlsext_servername_callback(htp->ssl_ctx,
-                                                   _evhtp_ssl_servername);
+                                                   evhtp_ssl_servername);
         }
     }
 #endif
@@ -3231,6 +3243,7 @@ evhtp_set_post_accept_cb(evhtp_t * htp, evhtp_post_accept_cb cb, void * arg) {
 }
 
 #ifdef EVHTP_ENABLE_SSL
+#if 0
 #ifdef EVHTP_ENABLE_EVTHR
 int
 evhtp_ssl_use_threads(void) {
@@ -3256,7 +3269,9 @@ evhtp_ssl_use_threads(void) {
 }
 
 #endif
+#endif
 
+#if 0
 int
 evhtp_ssl_init(evhtp_t * htp, evhtp_ssl_cfg_t * cfg) {
 #ifdef EVHTP_ENABLE_FUTURE_STUFF
@@ -3406,6 +3421,7 @@ evhtp_ssl_init(evhtp_t * htp, evhtp_ssl_cfg_t * cfg) {
     return 0;
 }     /* evhtp_use_ssl */
 
+#endif
 #endif
 
 struct bufferevent *
@@ -3786,8 +3802,10 @@ EXPORT_SYMBOL(evhtp_free);
 EXPORT_SYMBOL(evhtp_set_timeouts);
 EXPORT_SYMBOL(evhtp_set_bev_flags);
 
+#if 0
 #ifdef EVHTP_ENABLE_SSL
 EXPORT_SYMBOL(evhtp_ssl_init);
+#endif
 #endif
 
 EXPORT_SYMBOL(evhtp_disable_100_continue);
@@ -3811,8 +3829,10 @@ EXPORT_SYMBOL(evhtp_bind_sockaddr);
 
 #ifdef EVHTP_ENABLE_EVTHR
 EXPORT_SYMBOL(evhtp_use_threads);
+#if 0
 #ifdef EVHTP_ENABLE_SSL
 EXPORT_SYMBOL(evhtp_ssl_use_threads);
+#endif
 #endif
 #endif
 

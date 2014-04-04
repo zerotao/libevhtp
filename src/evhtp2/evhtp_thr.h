@@ -1,18 +1,19 @@
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE 1
-#endif
 #ifndef __EVHTP_THR_EVTHR_THR_H__
 #define __EVHTP_THR_EVTHR_THR_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 
 #include <sched.h>
 #include <pthread.h>
 #include <sys/queue.h>
 #include <event2/event.h>
 #include <event2/thread.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 enum evhtp_thr_res {
     EVHTP_THR_RES_OK = 0,

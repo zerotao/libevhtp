@@ -1,6 +1,11 @@
 #ifndef __EVHTP___INTERNAL_H__
 #define __EVHTP___INTERNAL_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #include "evhtp2/evhtp-config.h"
 
 #ifdef EVHTP_HAS_VISIBILITY_HIDDEN
@@ -15,6 +20,10 @@
     for ((var) = TAILQ_FIRST((head));                     \
          (var) && ((tvar) = TAILQ_NEXT((var), field), 1); \
          (var) = (tvar))
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif

@@ -1,6 +1,10 @@
 #ifndef __EVHTP_SSL_H__
 #define __EVHTP_SSL_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <evhtp2/evhtp-config.h>
 
 #ifdef EVHTP_ENABLE_SSL
@@ -43,6 +47,10 @@ int evhtp_ssl_init(evhtp_t * htp, evhtp_ssl_cfg_t * ssl_cfg);
 int evhtp_ssl_use_threads(void);
 #endif
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 #endif
 

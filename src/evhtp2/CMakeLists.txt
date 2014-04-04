@@ -7,6 +7,15 @@ if (EVHTP_ENABLE_EVTHR)
 	list(APPEND EVHTP_LIBS evhtp_thr)
 endif()
 
+if (EVHTP_ENABLE_SSL)
+	add_library(evhtp_ssl ${EVHTP_BUILD_TYPE} evhtp_ssl.c)
+
+	install(TARGETS evhtp_ssl   DESTINATION ${LIB_INSTALL_DIR})
+	install(FILES   evhtp_ssl.h DESTINATION ${INCLUDE_INSTALL_DIR}/evhtp2)
+
+	list(APPEND EVHTP_LIBS evhtp_ssl)
+endif()
+
 if (EVHTP_ENABLE_REGEX)
 	add_subdirectory(regex)
 endif()

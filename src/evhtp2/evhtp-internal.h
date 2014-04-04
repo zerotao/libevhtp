@@ -1,5 +1,10 @@
 #ifndef __EVHTP_INTERNAL_H__
 #define __EVHTP_INTERNAL_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <sys/queue.h>
 
 #include "evhtp2/evhtp-config.h"
@@ -9,6 +14,7 @@
 
 #ifdef EVHTP_ENABLE_SSL
 #include "evhtp2/evhtp_ssl.h"
+#include "evhtp2/evhtp_ssl-internal.h"
 #endif
 
 #ifdef EVHTP_ENABLE_EVTHR
@@ -251,32 +257,10 @@ struct evhtp_hooks {
     void * on_write_arg;
 };
 
-#ifdef EVHTP_ENABLE_SSL
-struct evhtp_ssl_cfg {
-    char * pemfile;
-    char * privfile;
-    char * cafile;
-    char * capath;
-    char * ciphers;
-    char * named_curve;
-    char * dhparams;
-    long   opts;
-    long   ctx_timeout;
-    int    verify_peer;
-    int    verify_depth;
-    long   store_flags;
-    long   cache_timeout;
-    long   cache_size;
-    void * args;
+evhtp_t * evhtp_request_find_vhost(evhtp_t * evhtp, const char * name);
 
-    evhtp_ssl_cache_type    cache_type;
-    evhtp_ssl_cache_init    cache_init;
-    evhtp_ssl_cache_add     cache_add;
-    evhtp_ssl_cache_get     cache_get;
-    evhtp_ssl_cache_del     cache_del;
-    evhtp_ssl_verify_cb     x509_verify_cb;
-    evhtp_ssl_chk_issued_cb x509_chk_issued_cb;
-};
+#ifdef __cplusplus
+}
 #endif
 
 #endif
