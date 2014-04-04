@@ -38,8 +38,8 @@ typedef int (*evhtp_ssl_verify_cb)(int pre_verify, evhtp_x509_store_ctx_t * ctx)
 typedef int (*evhtp_ssl_chk_issued_cb)(evhtp_x509_store_ctx_t * ctx, evhtp_x509_t * x, evhtp_x509_t * issuer);
 typedef int (*evhtp_ssl_cache_add)(evhtp_connection_t * connection, unsigned char * sid, int sid_len, evhtp_ssl_sess_t * sess);
 typedef void (*evhtp_ssl_cache_del)(evhtp_t * htp, unsigned char * sid, int sid_len);
-typedef evhtp_ssl_sess_t * (*evhtp_ssl_cache_get)(evhtp_connection_t * connection, unsigned char * sid, int sid_len);
 typedef void * (*evhtp_ssl_cache_init)(evhtp_t *);
+typedef evhtp_ssl_sess_t * (*evhtp_ssl_cache_get)(evhtp_connection_t * connection, unsigned char * sid, int sid_len);
 
 int evhtp_ssl_init(evhtp_t * htp, evhtp_ssl_cfg_t * ssl_cfg);
 
