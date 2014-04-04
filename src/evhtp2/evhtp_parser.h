@@ -1,6 +1,10 @@
 #ifndef __EVHTP_PARSER_H__
 #define __EVHTP_PARSER_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct evhtp_parser;
 
 enum evhtp_parser_type {
@@ -109,6 +113,12 @@ void              * evhtp_parser_get_userdata(evhtp_parser *);
 void                evhtp_parser_set_userdata(evhtp_parser *, void *);
 void                evhtp_parser_init(evhtp_parser *, evhtp_parser_type);
 evhtp_parser      * evhtp_parser_new(void);
+
+#ifdef __cplusplus
+}
+
+#endif
+
 
 #endif
 

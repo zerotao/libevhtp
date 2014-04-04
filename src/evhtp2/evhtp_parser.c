@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 #include "evhtp2/internal.h"
-#include "evhtp2/parser/evhtp_parser.h"
+#include "evhtp2/evhtp_parser.h"
 
 #ifdef PARSER_DEBUG
 #define __QUOTE(x)                       # x

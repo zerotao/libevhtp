@@ -19,7 +19,7 @@
 #include <event2/event.h>
 #include <event2/thread.h>
 
-#include "evhtp2/evhtp-internal.h"
+#include "evhtp2/internal.h"
 #include "evhtp2/evhtp_thr.h"
 
 typedef struct evhtp_thr_cmd        evhtp_thr_cmd_t;
