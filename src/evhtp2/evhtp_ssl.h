@@ -21,12 +21,12 @@ enum evhtp_ssl_cache_type {
 
 struct evhtp_ssl_cfg;
 
-typedef SSL                        evhtp_ssl_t;
-typedef X509                       evhtp_x509_t;
-typedef SSL_CTX                    evhtp_ssl_ctx_t;
-typedef SSL_SESSION                evhtp_ssl_sess_t;
-typedef X509_STORE_CTX             evhtp_x509_store_ctx_t;
-typedef struct evhtp_ssl_cfg       evhtp_ssl_cfg_t;
+typedef SSL                       evhtp_ssl_t;
+typedef X509                      evhtp_x509_t;
+typedef SSL_CTX                   evhtp_ssl_ctx_t;
+typedef SSL_SESSION               evhtp_ssl_sess_t;
+typedef X509_STORE_CTX            evhtp_x509_store_ctx_t;
+typedef struct evhtp_ssl_cfg      evhtp_ssl_cfg_t;
 
 typedef enum evhtp_ssl_cache_type evhtp_ssl_cache_type;
 
