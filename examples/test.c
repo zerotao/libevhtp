@@ -16,7 +16,7 @@
 #include "evhtp2/evhtp_thr.h"
 #endif
 
-#ifndef EVHTP_DISABLE_EVTHR
+#ifdef EVHTP_ENABLE_EVTHR
 int      use_threads    = 0;
 int      num_threads    = 0;
 #endif
@@ -445,11 +445,11 @@ const char * optstr = "htn:a:p:r:s:c:C:l:N:m:";
 const char * help   =
     "Options: \n"
     "  -h       : This help text\n"
-#ifndef EVHTP_DISABLE_EVTHR
+#ifdef EVHTP_ENABLE_EVTHR
     "  -t       : Run requests in a thread (default: off)\n"
     "  -n <int> : Number of threads        (default: 0 if -t is off, 4 if -t is on)\n"
 #endif
-#ifndef EVHTP_DISABLE_SSL
+#ifdef EVHTP_ENABLE_SSL
     "  -s <pem> : Enable SSL and PEM       (default: NULL)\n"
     "  -c <ca>  : CA cert file             (default: NULL)\n"
     "  -C <path>: CA Path                  (default: NULL)\n"
@@ -484,7 +484,7 @@ parse_args(int argc, char ** argv) {
             case 'p':
                 bind_port      = atoi(optarg);
                 break;
-#ifndef EVHTP_DISABLE_EVTHR
+#ifdef EVHTP_ENABLE_EVTHR
             case 't':
                 use_threads    = 1;
                 break;
@@ -492,7 +492,7 @@ parse_args(int argc, char ** argv) {
                 num_threads    = atoi(optarg);
                 break;
 #endif
-#ifndef EVHTP_DISABLE_SSL
+#ifdef EVHTP_ENABLE_SSL
             case 's':
                 ssl_pem        = strdup(optarg);
                 break;
@@ -515,7 +515,7 @@ parse_args(int argc, char ** argv) {
         } /* switch */
     }
 
-#ifndef EVHTP_DISABLE_EVTHR
+#ifdef EVHTP_ENABLE_EVTHR
     if (use_threads && num_threads == 0) {
         num_threads = 4;
     }
