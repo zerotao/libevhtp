@@ -21,24 +21,24 @@ enum evhtp_parser_scheme {
     evhtp_parser_scheme_unknown
 };
 
-enum evhtp_parser_method {
-    evhtp_parser_method_GET = 0,
-    evhtp_parser_method_HEAD,
-    evhtp_parser_method_POST,
-    evhtp_parser_method_PUT,
-    evhtp_parser_method_DELETE,
-    evhtp_parser_method_MKCOL,
-    evhtp_parser_method_COPY,
-    evhtp_parser_method_MOVE,
-    evhtp_parser_method_OPTIONS,
-    evhtp_parser_method_PROPFIND,
-    evhtp_parser_method_PROPPATCH,
-    evhtp_parser_method_LOCK,
-    evhtp_parser_method_UNLOCK,
-    evhtp_parser_method_TRACE,
-    evhtp_parser_method_CONNECT, /* RFC 2616 */
-    evhtp_parser_method_PATCH,   /* RFC 5789 */
-    evhtp_parser_method_UNKNOWN,
+enum evhtp_method {
+    evhtp_method_GET = 0,
+    evhtp_method_HEAD,
+    evhtp_method_POST,
+    evhtp_method_PUT,
+    evhtp_method_DELETE,
+    evhtp_method_MKCOL,
+    evhtp_method_COPY,
+    evhtp_method_MOVE,
+    evhtp_method_OPTIONS,
+    evhtp_method_PROPFIND,
+    evhtp_method_PROPPATCH,
+    evhtp_method_LOCK,
+    evhtp_method_UNLOCK,
+    evhtp_method_TRACE,
+    evhtp_method_CONNECT, /* RFC 2616 */
+    evhtp_method_PATCH,   /* RFC 5789 */
+    evhtp_method_UNKNOWN,
 };
 
 enum evhtp_parser_error {
@@ -62,7 +62,7 @@ typedef struct evhtp_parser       evhtp_parser;
 typedef struct evhtp_parser_hooks evhtp_parser_hooks;
 
 typedef enum evhtp_parser_scheme  evhtp_parser_scheme;
-typedef enum evhtp_parser_method  evhtp_parser_method;
+typedef enum evhtp_method         evhtp_method;
 typedef enum evhtp_parser_type    evhtp_parser_type;
 typedef enum evhtp_parser_error   evhtp_parser_error;
 
@@ -95,9 +95,9 @@ struct evhtp_parser_hooks {
 size_t              evhtp_parser_run(evhtp_parser *, evhtp_parser_hooks *, const char *, size_t);
 int                 evhtp_parser_should_keep_alive(evhtp_parser * p);
 evhtp_parser_scheme evhtp_parser_get_scheme(evhtp_parser *);
-evhtp_parser_method evhtp_parser_get_method(evhtp_parser *);
+evhtp_method        evhtp_parser_get_method(evhtp_parser *);
 const char        * evhtp_parser_get_methodstr(evhtp_parser *);
-const char        * evhtp_parser_get_methodstr_m(evhtp_parser_method);
+const char        * evhtp_parser_get_methodstr_m(evhtp_method);
 void                evhtp_parser_set_major(evhtp_parser *, unsigned char);
 void                evhtp_parser_set_minor(evhtp_parser *, unsigned char);
 unsigned char       evhtp_parser_get_major(evhtp_parser *);

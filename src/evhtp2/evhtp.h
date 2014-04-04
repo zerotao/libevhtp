@@ -163,7 +163,6 @@ typedef struct evhtp_connection  evhtp_connection_t;
 typedef enum evhtp_callback_type evhtp_callback_type;
 typedef enum evhtp_hook_type     evhtp_hook_type;
 typedef enum evhtp_pause_state   evhtp_pause_state;
-typedef enum evhtp_parser_method evhtp_method;
 typedef enum evhtp_type          evhtp_type;
 typedef enum evhtp_proto         evhtp_proto;
 
@@ -752,12 +751,14 @@ void evhtp_request_set_max_body_size(evhtp_request_t * request, uint64_t len);
  * @param htp
  * @param num
  */
-void              evhtp_set_max_keepalive_requests(evhtp_t * htp, uint64_t num);
+void evhtp_set_max_keepalive_requests(evhtp_t * htp, uint64_t num);
 
+#define evhtp_request_content_len evhtp_request_get_content_len
 struct evbuffer * evhtp_request_buffer_out(evhtp_request_t * req);
 struct evbuffer * evhtp_request_buffer_in(evhtp_request_t * req);
 uint64_t          evhtp_request_get_content_len(evhtp_request_t * req);
-#define evhtp_request_content_len evhtp_request_get_content_len
+evhtp_headers_t * evhtp_request_get_headers_out(evhtp_request_t * req);
+evhtp_headers_t * evhtp_request_get_headers_in(evhtp_request_t * req);
 
 #define EVHTP_PATH_GET_FN(vname, vtype) vtype evhtp_path_get_ ## vname(evhtp_path_t *);
 EVHTP_PATH_GET_FN(full, const char *);

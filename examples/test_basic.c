@@ -3,31 +3,35 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
-#include <evhtp.h>
+
+#include "evhtp2/evhtp.h"
+#ifdef EVHTP_ENABLE_EVTHR
+#include "evhtp2/evhtp_thr.h"
+#endif
 
 void
 testcb(evhtp_request_t * req, void * a) {
     const char * str = a;
 
-    evbuffer_add_printf(req->buffer_out, "%s", str);
+    evbuffer_add_printf(evhtp_request_buffer_out(req), "%s", str);
     evhtp_send_reply(req, EVHTP_RES_OK);
 }
 
 int
 main(int argc, char ** argv) {
-    evbase_t * evbase = event_base_new();
-    evhtp_t  * htp    = evhtp_new(evbase, NULL);
+    struct event_base * evbase = event_base_new();
+    evhtp_t           * htp    = evhtp_new(evbase, NULL);
 
     evhtp_set_cb(htp, "/simple/", testcb, "simple");
     evhtp_set_cb(htp, "/1/ping", testcb, "one");
     evhtp_set_cb(htp, "/1/ping.json", testcb, "two");
-#ifndef EVHTP_DISABLE_EVTHR
+
+#ifdef EVHTP_ENABLE_EVTHR
     evhtp_use_threads(htp, NULL, 4, NULL);
 #endif
     evhtp_bind_socket(htp, "0.0.0.0", 8081, 1024);
 
     event_base_loop(evbase, 0);
-
     evhtp_unbind_socket(htp);
     evhtp_free(htp);
     event_base_free(evbase);

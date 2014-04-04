@@ -114,7 +114,7 @@ struct evhtp_parser {
 
     evhtp_parser_type   type;
     evhtp_parser_scheme scheme;
-    evhtp_parser_method method;
+    evhtp_method        method;
 
     unsigned char multipart;
     unsigned char major;
@@ -370,14 +370,14 @@ evhtp_parser_get_scheme(evhtp_parser * p) {
     return p->scheme;
 }
 
-evhtp_parser_method
+evhtp_method
 evhtp_parser_get_method(evhtp_parser * p) {
     return p->method;
 }
 
 const char *
-evhtp_parser_get_methodstr_m(evhtp_parser_method meth) {
-    if (meth >= evhtp_parser_method_UNKNOWN) {
+evhtp_parser_get_methodstr_m(evhtp_method meth) {
+    if (meth >= evhtp_method_UNKNOWN) {
         return NULL;
     }
 
@@ -451,7 +451,7 @@ evhtp_parser_init(evhtp_parser * p, evhtp_parser_type type) {
     p->buf[0] = '\0';
     p->state  = s_start;
     p->error  = evhtp_parser_error_none;
-    p->method = evhtp_parser_method_UNKNOWN;
+    p->method = evhtp_method_UNKNOWN;
     p->type   = type;
 }
 
@@ -494,7 +494,7 @@ evhtp_parser_run(evhtp_parser * p, evhtp_parser_hooks * hooks, const char * data
 
                 p->flags            = 0;
                 p->error            = evhtp_parser_error_none;
-                p->method           = evhtp_parser_method_UNKNOWN;
+                p->method           = evhtp_method_UNKNOWN;
                 p->multipart        = 0;
                 p->major            = 0;
                 p->minor            = 0;
@@ -548,12 +548,12 @@ evhtp_parser_run(evhtp_parser * p, evhtp_parser_hooks * hooks, const char * data
                     switch (p->buf_idx) {
                         case 3:
                             if (_str3_cmp(m, 'G', 'E', 'T', '\0')) {
-                                p->method = evhtp_parser_method_GET;
+                                p->method = evhtp_method_GET;
                                 break;
                             }
 
                             if (_str3_cmp(m, 'P', 'U', 'T', '\0')) {
-                                p->method = evhtp_parser_method_PUT;
+                                p->method = evhtp_method_PUT;
                                 break;
                             }
 
@@ -561,77 +561,77 @@ evhtp_parser_run(evhtp_parser * p, evhtp_parser_hooks * hooks, const char * data
                         case 4:
                             if (m[1] == 'O') {
                                 if (_str3Ocmp(m, 'P', 'O', 'S', 'T')) {
-                                    p->method = evhtp_parser_method_POST;
+                                    p->method = evhtp_method_POST;
                                     break;
                                 }
 
                                 if (_str3Ocmp(m, 'C', 'O', 'P', 'Y')) {
-                                    p->method = evhtp_parser_method_COPY;
+                                    p->method = evhtp_method_COPY;
                                     break;
                                 }
 
                                 if (_str3Ocmp(m, 'M', 'O', 'V', 'E')) {
-                                    p->method = evhtp_parser_method_MOVE;
+                                    p->method = evhtp_method_MOVE;
                                     break;
                                 }
 
                                 if (_str3Ocmp(m, 'L', 'O', 'C', 'K')) {
-                                    p->method = evhtp_parser_method_LOCK;
+                                    p->method = evhtp_method_LOCK;
                                     break;
                                 }
                             } else {
                                 if (_str4cmp(m, 'H', 'E', 'A', 'D')) {
-                                    p->method = evhtp_parser_method_HEAD;
+                                    p->method = evhtp_method_HEAD;
                                     break;
                                 }
                             }
                             break;
                         case 5:
                             if (_str5cmp(m, 'M', 'K', 'C', 'O', 'L')) {
-                                p->method = evhtp_parser_method_MKCOL;
+                                p->method = evhtp_method_MKCOL;
                                 break;
                             }
 
                             if (_str5cmp(m, 'T', 'R', 'A', 'C', 'E')) {
-                                p->method = evhtp_parser_method_TRACE;
+                                p->method = evhtp_method_TRACE;
                                 break;
                             }
 
                             if (_str5cmp(m, 'P', 'A', 'T', 'C', 'H')) {
-                                p->method = evhtp_parser_method_PATCH;
+                                p->method = evhtp_method_PATCH;
                                 break;
                             }
                             break;
                         case 6:
                             if (_str6cmp(m, 'D', 'E', 'L', 'E', 'T', 'E')) {
-                                p->method = evhtp_parser_method_DELETE;
+                                p->method = evhtp_method_DELETE;
                                 break;
                             }
 
                             if (_str6cmp(m, 'U', 'N', 'L', 'O', 'C', 'K')) {
-                                p->method = evhtp_parser_method_UNLOCK;
+                                p->method = evhtp_method_UNLOCK;
                                 break;
                             }
                             break;
                         case 7:
                             if (_str7_cmp(m, 'O', 'P', 'T', 'I', 'O', 'N', 'S', '\0')) {
-                                p->method = evhtp_parser_method_OPTIONS;
+                                p->method = evhtp_method_OPTIONS;
                             }
 
                             if (_str7_cmp(m, 'C', 'O', 'N', 'N', 'E', 'C', 'T', '\0')) {
-                                p->method = evhtp_parser_method_CONNECT;
+                                p->method = evhtp_method_CONNECT;
                             }
                             break;
                         case 8:
                             if (_str8cmp(m, 'P', 'R', 'O', 'P', 'F', 'I', 'N', 'D')) {
-                                p->method = evhtp_parser_method_PROPFIND;
+                                p->method = evhtp_method_PROPFIND;
                             }
 
                             break;
 
                         case 9:
                             if (_str9cmp(m, 'P', 'R', 'O', 'P', 'P', 'A', 'T', 'C', 'H')) {
-                                p->method = evhtp_parser_method_PROPPATCH;
+                                p->method = evhtp_method_PROPPATCH;
                             }
                             break;
                     } /* switch */

@@ -2541,7 +2541,7 @@ evhtp_response_needs_body(const evhtp_res code, const evhtp_method method) {
     return code != EVHTP_RES_NOCONTENT &&
            code != EVHTP_RES_NOTMOD &&
            (code < 100 || code >= 200) &&
-           method != evhtp_parser_method_HEAD;
+           method != evhtp_method_HEAD;
 }
 
 void
@@ -3480,6 +3480,20 @@ evhtp_request_buffer_in(evhtp_request_t * req) {
 }
 
 EXPORT_SYMBOL(evhtp_request_buffer_in);
+
+inline evhtp_headers_t *
+evhtp_request_get_headers_out(evhtp_request_t * req) {
+    return req->headers_out;
+}
+
+EXPORT_SYMBOL(evhtp_request_get_headers_out);
+
+inline evhtp_headers_t *
+evhtp_request_get_headers_in(evhtp_request_t * req) {
+    return req->headers_in;
+}
+
+EXPORT_SYMBOL(evhtp_request_get_headers_in);
 
 /*****************************************************************
 * client request functions                                      *
