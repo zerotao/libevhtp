@@ -118,6 +118,10 @@ if (EVHTP_ENABLE_REGEX)
 		DESTINATION ${INCLUDE_INSTALL_DIR}/evhtp2/regex/oniguruma)
 endif()
 
+install (FILES
+	${EVHTP_DEPS_INSTALL}/include/evhtp2/evhtp-config.h
+	DESTINATION ${INCLUDE_INSTALL_DIR}/evhtp2
+)
 
 message(STATUS "CMAKE_BUILD_TYPE         : " ${CMAKE_BUILD_TYPE})
 message(STATUS "CMAKE_BINARY_DIR         : " ${CMAKE_BINARY_DIR})
