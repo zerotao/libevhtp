@@ -92,6 +92,35 @@ static void                 _evhtp_path_free(evhtp_path_t * path);
 #define _evhtp_unlock(h)                           do {} while (0)
 #endif
 
+#define __GEN_GET_PATH_FUNC(valname, valtype)      \
+    inline valtype                                 \
+    evhtp_path_get_ ## valname(evhtp_path_t * k) { \
+        return k->valname;                         \
+    }                                              \
+    EXPORT_SYMBOL(evhtp_path_get_ ## valname);
+
+__GEN_GET_PATH_FUNC(full, const char *);
+__GEN_GET_PATH_FUNC(path, const char *);
+__GEN_GET_PATH_FUNC(file, const char *);
+__GEN_GET_PATH_FUNC(match_start, const char *);
+__GEN_GET_PATH_FUNC(match_end, const char *);
+__GEN_GET_PATH_FUNC(matched_soff, unsigned int);
+__GEN_GET_PATH_FUNC(matched_eoff, unsigned int);
+
+#define __GEN_GET_KV_FUNC(valname, valtype)    \
+    inline valtype                             \
+    evhtp_kv_get_ ## valname(evhtp_kv_t * k) { \
+        return k->valname;                     \
+    }                                          \
+    EXPORT_SYMBOL(evhtp_kv_get_ ## valname);
+
+__GEN_GET_KV_FUNC(key, const char *);
+__GEN_GET_KV_FUNC(val, const char *);
+__GEN_GET_KV_FUNC(klen, size_t);
+__GEN_GET_KV_FUNC(k_heaped, uint8_t);
+__GEN_GET_KV_FUNC(v_heaped, uint8_t);
+
+
 static const char *
 status_code_to_str(evhtp_res code) {
     switch (code) {
@@ -1840,8 +1869,8 @@ _evhtp_accept_cb(struct evconnlistener * serv, int fd, struct sockaddr * s, int 
 
 #ifdef EVHTP_ENABLE_EVTHR
     if (htp->thr_pool != NULL) {
-        if (evthr_pool_defer(htp->thr_pool,
-                             _evhtp_run_in_thread, connection) != EVHTP_THR_RES_OK) {
+        if (evhtp_thr_pool_defer(htp->thr_pool,
+                                 _evhtp_run_in_thread, connection) != EVHTP_THR_RES_OK) {
             evutil_closesocket(connection->sock);
             evhtp_connection_free(connection);
             return;
@@ -2948,6 +2977,37 @@ evhtp_unset_all_hooks(evhtp_hooks_t ** hooks) {
     return res;
 } /* evhtp_unset_all_hooks */
 
+inline uint64_t
+evhtp_request_get_content_len(evhtp_request_t * req) {
+    return evhtp_parser_get_content_length(req->conn->parser);
+}
+
+EXPORT_SYMBOL(evhtp_request_get_content_len);
+
+inline int
+evhtp_request_set_hook(evhtp_request_t * req,
+                       evhtp_hook_type type, evhtp_hook cb, void * arg) {
+    return evhtp_set_hook(&req->hooks, type, cb, arg);
+}
+
+EXPORT_SYMBOL(evhtp_request_set_hook);
+
+inline int
+evhtp_connection_set_hook(evhtp_connection_t * conn,
+                          evhtp_hook_type type, evhtp_hook cb, void * arg) {
+    return evhtp_set_hook(&conn->hooks, type, cb, arg);
+}
+
+EXPORT_SYMBOL(evhtp_connection_set_hook);
+
+inline int
+evhtp_callback_set_hook(evhtp_callback_t * callback,
+                        evhtp_hook_type type, evhtp_hook cb, void * arg) {
+    return evhtp_set_hook(&callback->hooks, type, cb, arg);
+}
+
+EXPORT_SYMBOL(evhtp_callback_set_hook);
+
 evhtp_callback_t *
 evhtp_set_cb(evhtp_t * htp, const char * path, evhtp_callback_cb cb, void * arg) {
     evhtp_callback_t * hcb;
@@ -3104,10 +3164,14 @@ evhtp_set_post_accept_cb(evhtp_t * htp, evhtp_post_accept_cb cb, void * arg) {
     htp->defaults.post_accept_cbarg = arg;
 }
 
-#ifdef EVHTP_ENABLE_SSL
-#endif
+inline struct event_base *
+evhtp_connection_get_evbase(evhtp_connection_t * conn) {
+    return conn->evbase;
+}
 
-struct bufferevent *
+EXPORT_SYMBOL(evhtp_connection_get_evbase);
+
+inline struct bufferevent *
 evhtp_connection_get_bev(evhtp_connection_t * connection) {
     return connection->bev;
 }
@@ -3134,22 +3198,29 @@ evhtp_connection_take_ownership(evhtp_connection_t * connection) {
     return bev;
 }
 
-struct bufferevent *
+inline struct bufferevent *
 evhtp_request_get_bev(evhtp_request_t * request) {
     return evhtp_connection_get_bev(request->conn);
 }
 
-struct bufferevent *
+inline struct bufferevent *
 evhtp_request_take_ownership(evhtp_request_t * request) {
     return evhtp_connection_take_ownership(evhtp_request_get_connection(request));
 }
 
-void
+inline struct event_base *
+evhtp_request_get_evbase(evhtp_request_t * request) {
+    return evhtp_connection_get_evbase(request->conn);
+}
+
+EXPORT_SYMBOL(evhtp_request_get_evbase);
+
+inline void
 evhtp_connection_set_bev(evhtp_connection_t * conn, struct bufferevent * bev) {
     conn->bev = bev;
 }
 
-void
+inline void
 evhtp_request_set_bev(evhtp_request_t * request, struct bufferevent * bev) {
     evhtp_connection_set_bev(request->conn, bev);
 }
@@ -3366,8 +3437,8 @@ evhtp_free(evhtp_t * evhtp) {
 
 #ifdef EVHTP_ENABLE_EVTHR
     if (evhtp->thr_pool) {
-        evthr_pool_stop(evhtp->thr_pool);
-        evthr_pool_free(evhtp->thr_pool);
+        evhtp_thr_pool_stop(evhtp->thr_pool);
+        evhtp_thr_pool_free(evhtp->thr_pool);
     }
 #endif
 
@@ -3395,6 +3466,20 @@ evhtp_free(evhtp_t * evhtp) {
 
     free(evhtp);
 }
+
+inline struct evbuffer *
+evhtp_request_buffer_out(evhtp_request_t * req) {
+    return req->buffer_out;
+}
+
+EXPORT_SYMBOL(evhtp_request_buffer_out);
+
+inline struct evbuffer *
+evhtp_request_buffer_in(evhtp_request_t * req) {
+    return req->buffer_in;
+}
+
+EXPORT_SYMBOL(evhtp_request_buffer_in);
 
 /*****************************************************************
 * client request functions                                      *

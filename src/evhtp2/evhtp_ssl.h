@@ -23,8 +23,6 @@ enum evhtp_ssl_cache_type {
     evhtp_ssl_cache_type_builtin
 };
 
-struct evhtp_ssl_cfg;
-
 typedef SSL                       evhtp_ssl_t;
 typedef X509                      evhtp_x509_t;
 typedef SSL_CTX                   evhtp_ssl_ctx_t;
@@ -40,6 +38,33 @@ typedef int (*evhtp_ssl_cache_add)(evhtp_connection_t * connection, unsigned cha
 typedef void (*evhtp_ssl_cache_del)(evhtp_t * htp, unsigned char * sid, int sid_len);
 typedef void * (*evhtp_ssl_cache_init)(evhtp_t *);
 typedef evhtp_ssl_sess_t * (*evhtp_ssl_cache_get)(evhtp_connection_t * connection, unsigned char * sid, int sid_len);
+
+struct evhtp_ssl_cfg {
+    char * pemfile;
+    char * privfile;
+    char * cafile;
+    char * capath;
+    char * ciphers;
+    char * named_curve;
+    char * dhparams;
+    long   opts;
+    long   ctx_timeout;
+    int    verify_peer;
+    int    verify_depth;
+    long   store_flags;
+    long   cache_timeout;
+    long   cache_size;
+    void * args;
+
+    evhtp_ssl_cache_type    cache_type;
+    evhtp_ssl_cache_init    cache_init;
+    evhtp_ssl_cache_add     cache_add;
+    evhtp_ssl_cache_get     cache_get;
+    evhtp_ssl_cache_del     cache_del;
+    evhtp_ssl_verify_cb     x509_verify_cb;
+    evhtp_ssl_chk_issued_cb x509_chk_issued_cb;
+};
+
 
 int evhtp_ssl_init(evhtp_t * htp, evhtp_ssl_cfg_t * ssl_cfg);
 

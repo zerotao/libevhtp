@@ -49,6 +49,11 @@ find_library (EVHTP_LIBEVENT   event    REQUIRED)
 find_path    (EVHTP_LIBEVENT_H event.h  REQUIRED)
 find_path    (EVHTP_UNISTD_H   unistd.h REQUIRED)
 
+message(STATUS "libevent                 : ${EVHTP_LIBEVENT}")
+
+list(APPEND EVHTP_EXTERNAL_LIBS ${EVHTP_LIBEVENT})
+list(APPEND EVHTP_EXTERNAL_INCS ${EVHTP_LIBEVENT_H}) 
+
 if (EVHTP_ENABLE_SSL)
 	find_package(OpenSSL)
 
@@ -57,10 +62,19 @@ if (EVHTP_ENABLE_SSL)
 			"-- OpenSSL not found, either install it, or set -DEVHTP_ENABLE_SSL:STRING=OFF")
 	endif()
 
-	if (NOT ${LIBEVENT_OPENSSL_LIBRARY})
+	find_library (EVHTP_LIBEVENT_OPENSSL event_openssl)
+
+	if (NOT EVHTP_LIBEVENT_OPENSSL)
 		message(FATAL_ERROR
 			"-- OpenSSL found, but event_openssl not found, recompile libevent or set -DEVHTP_ENABLE_SSL:STRING=OFF")
 	endif()
+
+	message(STATUS "libssl                   : ${OPENSSL_LIBRARIES}")
+	message(STATUS "libevent_openssl         : ${EVHTP_LIBEVENT_OPENSSL}")
+
+	list(APPEND EVHTP_EXTERNAL_LIBS ${OPENSSL_LIBRARIES})
+	list(APPEND EVHTP_EXTERNAL_LIBS ${EVHTP_LIBEVENT_OPENSSL})
+	list(APPEND EVHTP_EXTERNAL_INCS ${OPENSSL_INCLUDE_DIR})
 endif()
 
 
@@ -75,6 +89,11 @@ if (EVHTP_ENABLE_EVTHR)
 		message(FATAL_ERROR
 			"-- pthread.h not found, either install it, or set -DEVHTP_ENABLE_EVTHR:STRING=OFF")
 	endif()
+
+	message(STATUS "libpthread               : ${EVHTP_PTHREAD}")
+
+	list(APPEND EVHTP_EXTERNAL_LIBS ${EVHTP_PTHREAD})
+	list(APPEND EVHTP_EXTERNAL_INCS ${EVHTP_PTHREAD_H})
 endif()
 
 if (NOT LIB_INSTALL_DIR)
@@ -104,6 +123,7 @@ configure_file(
 	${EVHTP_DEPS_INSTALL}/include/evhtp2/evhtp-config.h
 )
 
+include_directories (${EVHTP_EXTERNAL_INCS})
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories (${EVHTP_DEPS_INSTALL}/include)
 link_directories    (${EVHTP_DEPS_INSTALL}/lib)
@@ -150,3 +170,4 @@ message(STATUS "CMAKE_INSTALL_PREFIX     : " ${CMAKE_INSTALL_PREFIX})
 message(STATUS "Version                  : " ${EVHTP_VERSION_MAJOR}.${EVHTP_VERSION_MINOR}.${EVHTP_VERSION_PATCH})
 
 add_subdirectory(src)
+add_subdirectory(examples)

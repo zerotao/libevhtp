@@ -34,7 +34,6 @@ struct evhtp_defaults {
     void               * post_accept_cbarg;
 };
 
-
 /**
  * @brief main structure containing all configuration information
  */
@@ -103,7 +102,6 @@ struct evhtp_connection {
 
     TAILQ_HEAD(, evhtp_request) pending;            /**< client pending data */
 };
-
 
 /**
  * @brief a structure containing all information for a http request.

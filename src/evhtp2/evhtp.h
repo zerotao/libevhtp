@@ -80,7 +80,6 @@ extern "C" {
 #define EVHTP_RES_VERNSUPPORT   505
 #define EVHTP_RES_BWEXEED       509
 
-
 enum evhtp_pause_state {
     evhtp_pause_s_nil = 0,
     evhtp_pause_s_paused,
@@ -166,7 +165,7 @@ typedef enum evhtp_hook_type     evhtp_hook_type;
 typedef enum evhtp_pause_state   evhtp_pause_state;
 typedef enum evhtp_parser_method evhtp_method;
 typedef enum evhtp_type          evhtp_type;
-typedef enum evhtp_proto evhtp_proto;
+typedef enum evhtp_proto         evhtp_proto;
 
 typedef uint16_t                 evhtp_res;
 typedef uint8_t                  evhtp_error_flags;
@@ -334,7 +333,6 @@ int evhtp_set_hook(evhtp_hooks_t ** hooks, evhtp_hook_type type, evhtp_hook cb, 
  */
 int evhtp_unset_hook(evhtp_hooks_t ** hooks, evhtp_hook_type type);
 
-
 /**
  * @brief removes all hooks.
  *
@@ -344,6 +342,9 @@ int evhtp_unset_hook(evhtp_hooks_t ** hooks, evhtp_hook_type type);
  */
 int evhtp_unset_all_hooks(evhtp_hooks_t ** hooks);
 
+int evhtp_request_set_hook(evhtp_request_t * r, evhtp_hook_type type, evhtp_hook cb, void * arg);
+int evhtp_connection_set_hook(evhtp_connection_t * c, evhtp_hook_type type, evhtp_hook cb, void * arg);
+int evhtp_callback_set_hook(evhtp_callback_t * c, evhtp_hook_type type, evhtp_hook cb, void * arg);
 
 /**
  * @brief bind to a socket, optionally with specific protocol support
@@ -519,8 +520,14 @@ void evhtp_kvs_add_kv(evhtp_kvs_t * kvs, evhtp_kv_t * kv);
  * @param src an evhtp_kvs_t structure
  */
 void evhtp_kvs_add_kvs(evhtp_kvs_t * dst, evhtp_kvs_t * src);
-
 int  evhtp_kvs_for_each(evhtp_kvs_t * kvs, evhtp_kvs_iterator cb, void * arg);
+
+#define EVHTP_KV_GET_FN(vname, vtype) vtype evhtp_kv_get_ ## vname(evhtp_kv_t *);
+EVHTP_KV_GET_FN(key, const char *);
+EVHTP_KV_GET_FN(val, const char *);
+EVHTP_KV_GET_FN(klen, size_t);
+EVHTP_KV_GET_FN(k_heaped, uint8_t);
+EVHTP_KV_GET_FN(v_heaped, uint8_t);
 
 /**
  * @brief Parses the query portion of the uri into a set of key/values
@@ -664,6 +671,7 @@ void evhtp_request_set_bev(evhtp_request_t * request, struct bufferevent * bev);
  * @return bufferevent on success, otherwise NULL
  */
 struct bufferevent * evhtp_connection_get_bev(evhtp_connection_t * conn);
+struct event_base  * evhtp_connection_get_evbase(evhtp_connection_t * conn);
 
 
 /**
@@ -684,6 +692,7 @@ void evhtp_connection_set_timeouts(evhtp_connection_t * conn, const struct timev
  * @return bufferevent on success, otherwise NULL
  */
 struct bufferevent * evhtp_request_get_bev(evhtp_request_t * request);
+struct event_base  * evhtp_request_get_evbase(evhtp_request_t * request);
 
 
 /**
@@ -708,7 +717,6 @@ struct bufferevent * evhtp_connection_take_ownership(evhtp_connection_t * connec
  * @param connection
  */
 void evhtp_connection_free(evhtp_connection_t * connection);
-
 void evhtp_request_free(evhtp_request_t * request);
 
 /**
@@ -744,7 +752,21 @@ void evhtp_request_set_max_body_size(evhtp_request_t * request, uint64_t len);
  * @param htp
  * @param num
  */
-void evhtp_set_max_keepalive_requests(evhtp_t * htp, uint64_t num);
+void              evhtp_set_max_keepalive_requests(evhtp_t * htp, uint64_t num);
+
+struct evbuffer * evhtp_request_buffer_out(evhtp_request_t * req);
+struct evbuffer * evhtp_request_buffer_in(evhtp_request_t * req);
+uint64_t          evhtp_request_get_content_len(evhtp_request_t * req);
+#define evhtp_request_content_len evhtp_request_get_content_len
+
+#define EVHTP_PATH_GET_FN(vname, vtype) vtype evhtp_path_get_ ## vname(evhtp_path_t *);
+EVHTP_PATH_GET_FN(full, const char *);
+EVHTP_PATH_GET_FN(path, const char *);
+EVHTP_PATH_GET_FN(file, const char *);
+EVHTP_PATH_GET_FN(match_start, const char *);
+EVHTP_PATH_GET_FN(match_end, const char *);
+EVHTP_PATH_GET_FN(matched_soff, unsigned int);
+EVHTP_PATH_GET_FN(matched_eoff, unsigned int);
 
 /*****************************************************************
 * client request functions                                      *
