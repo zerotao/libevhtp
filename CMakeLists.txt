@@ -100,8 +100,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${EVHTP_DEPS_INSTALL}/lib/)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${EVHTP_DEPS_INSTALL}/lib/)
 
 configure_file(
-	${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/evhtp-config.h.in
-	${EVHTP_DEPS_INSTALL}/include/evhtp/evhtp-config.h
+	${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp2/evhtp-config.h.in
+	${EVHTP_DEPS_INSTALL}/include/evhtp2/evhtp-config.h
 )
 
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -109,13 +109,13 @@ include_directories (${EVHTP_DEPS_INSTALL}/include)
 link_directories    (${EVHTP_DEPS_INSTALL}/lib)
 
 if (EVHTP_ENABLE_REGEX)
-	include_directories (${EVHTP_DEPS_INSTALL}/include/evhtp/regex)
-	include_directories (${EVHTP_DEPS_INSTALL}/include/evhtp/regex/oniguruma)
-	include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/regex/oniguruma)
-	include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/regex/oniguruma/enc)
+	include_directories (${EVHTP_DEPS_INSTALL}/include/evhtp2/regex)
+	include_directories (${EVHTP_DEPS_INSTALL}/include/evhtp2/regex/oniguruma)
+	include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp2/regex/oniguruma)
+	include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp2/regex/oniguruma/enc)
 	install (FILES
-		${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp/regex/oniguruma/onigposix.h
-		DESTINATION ${INCLUDE_INSTALL_DIR}/evhtp/regex/oniguruma)
+		${CMAKE_CURRENT_SOURCE_DIR}/src/evhtp2/regex/oniguruma/onigposix.h
+		DESTINATION ${INCLUDE_INSTALL_DIR}/evhtp2/regex/oniguruma)
 endif()
 
 

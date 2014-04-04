@@ -1,6 +1,6 @@
 CONFIGURE_FILE(
 	${CMAKE_CURRENT_SOURCE_DIR}/config.h.in
-	${EVHTP_DEPS_INSTALL}/include/evhtp/regex/oniguruma/oniguruma-config.h
+	${EVHTP_DEPS_INSTALL}/include/evhtp2/regex/oniguruma/oniguruma-config.h
 )
 
 set(O_SOURCES regint.h regparse.h regenc.h st.h

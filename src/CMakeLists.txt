@@ -1,1 +1,1 @@
-add_subdirectory(evhtp)
+add_subdirectory(evhtp2)
