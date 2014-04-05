@@ -10,10 +10,10 @@
 #endif
 
 void
-testcb(evhtp_request_t * req, void * a) {
+testcb(evhtp_req_t * req, void * a) {
     const char * str = a;
 
-    evbuffer_add_printf(evhtp_request_buffer_out(req), "%s", str);
+    evbuffer_add_printf(evhtp_req_buffer_out(req), "%s", str);
     evhtp_send_reply(req, EVHTP_RES_OK);
 }
 

@@ -57,21 +57,21 @@ _evhtp_ssl_delete_cache_ent(evhtp_ssl_ctx_t * ctx, evhtp_ssl_sess_t * sess) {
 
 static int
 _evhtp_ssl_add_cache_ent(evhtp_ssl_t * ssl, evhtp_ssl_sess_t * sess) {
-    evhtp_connection_t * connection;
-    evhtp_ssl_cfg_t    * cfg;
-    unsigned char      * sid;
-    int                  slen;
+    evhtp_conn_t    * conn;
+    evhtp_ssl_cfg_t * cfg;
+    unsigned char   * sid;
+    int               slen;
 
-    connection = (evhtp_connection_t *)SSL_get_app_data(ssl);
-    cfg        = connection->htp->ssl_cfg;
+    conn = (evhtp_conn_t *)SSL_get_app_data(ssl);
+    cfg  = conn->htp->ssl_cfg;
 
-    sid        = sess->session_id;
-    slen       = sess->session_id_length;
+    sid  = sess->session_id;
+    slen = sess->session_id_length;
 
     SSL_set_timeout(sess, cfg->cache_timeout);
 
     if (cfg->cache_add) {
-        return (cfg->cache_add)(connection, sid, slen, sess);
+        return (cfg->cache_add)(conn, sid, slen, sess);
     }
 
     return 0;
@@ -79,16 +79,16 @@ _evhtp_ssl_add_cache_ent(evhtp_ssl_t * ssl, evhtp_ssl_sess_t * sess) {
 
 static evhtp_ssl_sess_t *
 _evhtp_ssl_get_cache_ent(evhtp_ssl_t * ssl, unsigned char * sid, int sid_len, int * copy) {
-    evhtp_connection_t * connection;
-    evhtp_ssl_cfg_t    * cfg;
-    evhtp_ssl_sess_t   * sess;
+    evhtp_conn_t     * conn;
+    evhtp_ssl_cfg_t  * cfg;
+    evhtp_ssl_sess_t * sess;
 
-    connection = (evhtp_connection_t * )SSL_get_app_data(ssl);
-    cfg        = connection->htp->ssl_cfg;
-    sess       = NULL;
+    conn = (evhtp_conn_t * )SSL_get_app_data(ssl);
+    cfg  = conn->htp->ssl_cfg;
+    sess = NULL;
 
     if (cfg->cache_get) {
-        sess = (cfg->cache_get)(connection, sid, sid_len);
+        sess = (cfg->cache_get)(conn, sid, sid_len);
     }
 
     *copy = 0;
@@ -98,26 +98,26 @@ _evhtp_ssl_get_cache_ent(evhtp_ssl_t * ssl, unsigned char * sid, int sid_len, in
 
 static int
 _evhtp_ssl_servername(evhtp_ssl_t * ssl, int * unused, void * arg) {
-    const char         * sname;
-    evhtp_connection_t * connection;
-    evhtp_t            * evhtp;
-    evhtp_t            * evhtp_vhost;
+    const char   * sname;
+    evhtp_conn_t * conn;
+    evhtp_t      * evhtp;
+    evhtp_t      * evhtp_vhost;
 
     if (!(sname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name))) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
-    if (!(connection = SSL_get_app_data(ssl))) {
+    if (!(conn = SSL_get_app_data(ssl))) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
-    if (!(evhtp = connection->htp)) {
+    if (!(evhtp = conn->htp)) {
         return SSL_TLSEXT_ERR_NOACK;
     }
 
-    if ((evhtp_vhost = evhtp_request_find_vhost(evhtp, sname))) {
-        connection->htp           = evhtp_vhost;
-        connection->vhost_via_sni = 1;
+    if ((evhtp_vhost = evhtp_req_find_vhost(evhtp, sname))) {
+        conn->htp           = evhtp_vhost;
+        conn->vhost_via_sni = 1;
 
         SSL_set_SSL_CTX(ssl, evhtp_vhost->ssl_ctx);
         SSL_set_options(ssl, SSL_CTX_get_options(ssl->ctx));

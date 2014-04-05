@@ -96,20 +96,20 @@ enum evhtp_callback_type {
 
 /**
  * @brief types associated with where a developer can hook into
- *        during the request processing cycle.
+ *        during the req processing cycle.
  */
 enum evhtp_hook_type {
-    evhtp_hook_on_header,       /**< type which defines to hook after one header has been parsed */
-    evhtp_hook_on_headers,      /**< type which defines to hook after all headers have been parsed */
-    evhtp_hook_on_path,         /**< type which defines to hook once a path has been parsed */
-    evhtp_hook_on_read,         /**< type which defines to hook whenever the parser recieves data in a body */
-    evhtp_hook_on_request_fini, /**< type which defines to hook before the request is free'd */
-    evhtp_hook_on_connection_fini,
+    evhtp_hook_on_header,   /**< type which defines to hook after one header has been parsed */
+    evhtp_hook_on_headers,  /**< type which defines to hook after all headers have been parsed */
+    evhtp_hook_on_path,     /**< type which defines to hook once a path has been parsed */
+    evhtp_hook_on_read,     /**< type which defines to hook whenever the parser recieves data in a body */
+    evhtp_hook_on_req_fini, /**< type which defines to hook before the req is free'd */
+    evhtp_hook_on_conn_fini,
     evhtp_hook_on_new_chunk,
     evhtp_hook_on_chunk_complete,
     evhtp_hook_on_chunks_complete,
     evhtp_hook_on_headers_start,
-    evhtp_hook_on_error,        /**< type which defines to hook whenever an error occurs */
+    evhtp_hook_on_error,    /**< type which defines to hook whenever an error occurs */
     evhtp_hook_on_hostname,
     evhtp_hook_on_write
 };
@@ -134,31 +134,31 @@ struct evhtp_uri;
 struct evhtp_path;
 struct evhtp_hooks;
 struct evhtp_alias;
-struct evhtp_request;
+struct evhtp_req;
 struct evhtp_default;
 struct evhtp_defaults;
 struct evhtp_callback;
 struct evhtp_callbacks;
 struct evhtp_authority;
-struct evhtp_connection;
+struct evhtp_conn;
 
 typedef struct evhtp             evhtp_t;
 typedef struct evhtp_kv          evhtp_kv_t;
-typedef struct evhtp_kv          evhtp_header_t;
+typedef struct evhtp_kv          evhtp_hdr_t;
 typedef struct evhtp_kvs         evhtp_query_t;
 typedef struct evhtp_kvs         evhtp_kvs_t;
-typedef struct evhtp_kvs         evhtp_headers_t;
+typedef struct evhtp_kvs         evhtp_hdrs_t;
 typedef struct evhtp_uri         evhtp_uri_t;
 typedef struct evhtp_path        evhtp_path_t;
 typedef struct evhtp_hooks       evhtp_hooks_t;
 typedef struct evhtp_alias       evhtp_alias_t;
-typedef struct evhtp_request     evhtp_request_t;
+typedef struct evhtp_req         evhtp_req_t;
 typedef struct evhtp_default     evhtp_default_t;
 typedef struct evhtp_defaults    evhtp_defaults_t;
 typedef struct evhtp_callback    evhtp_callback_t;
 typedef struct evhtp_callbacks   evhtp_callbacks_t;
 typedef struct evhtp_authority   evhtp_authority_t;
-typedef struct evhtp_connection  evhtp_connection_t;
+typedef struct evhtp_conn        evhtp_conn_t;
 
 typedef enum evhtp_callback_type evhtp_callback_type;
 typedef enum evhtp_hook_type     evhtp_hook_type;
@@ -172,28 +172,28 @@ typedef uint8_t                  evhtp_error_flags;
 #ifdef EVHTP_ENABLE_EVTHR
 typedef void (*evhtp_thread_init_cb)(evhtp_t * htp, evhtp_thr_t * thr, void * arg);
 #endif
-typedef void (*evhtp_callback_cb)(evhtp_request_t * req, void * arg);
-typedef void (*evhtp_hook_err_cb)(evhtp_request_t * req, evhtp_error_flags errtype, void * arg);
+typedef void (*evhtp_callback_cb)(evhtp_req_t * req, void * arg);
+typedef void (*evhtp_hook_err_cb)(evhtp_req_t * req, evhtp_error_flags errtype, void * arg);
 
 /* Generic hook for passing ISO tests */
 typedef evhtp_res (*evhtp_hook)();
-typedef evhtp_res (*evhtp_pre_accept_cb)(evhtp_connection_t * conn, void * arg);
-typedef evhtp_res (*evhtp_post_accept_cb)(evhtp_connection_t * conn, void * arg);
-typedef evhtp_res (*evhtp_hook_header_cb)(evhtp_request_t * req, evhtp_header_t * hdr, void * arg);
-typedef evhtp_res (*evhtp_hook_headers_cb)(evhtp_request_t * req, evhtp_headers_t * hdr, void * arg);
-typedef evhtp_res (*evhtp_hook_path_cb)(evhtp_request_t * req, evhtp_path_t * path, void * arg);
-typedef evhtp_res (*evhtp_hook_read_cb)(evhtp_request_t * req, struct evbuffer * buf, void * arg);
-typedef evhtp_res (*evhtp_hook_request_fini_cb)(evhtp_request_t * req, void * arg);
-typedef evhtp_res (*evhtp_hook_connection_fini_cb)(evhtp_connection_t * connection, void * arg);
-typedef evhtp_res (*evhtp_hook_chunk_new_cb)(evhtp_request_t * r, uint64_t len, void * arg);
-typedef evhtp_res (*evhtp_hook_chunk_fini_cb)(evhtp_request_t * r, void * arg);
-typedef evhtp_res (*evhtp_hook_chunks_fini_cb)(evhtp_request_t * r, void * arg);
-typedef evhtp_res (*evhtp_hook_headers_start_cb)(evhtp_request_t * r, void * arg);
-typedef evhtp_res (*evhtp_hook_hostname_cb)(evhtp_request_t * r, const char * hostname, void * arg);
-typedef evhtp_res (*evhtp_hook_write_cb)(evhtp_connection_t * conn, void * arg);
+typedef evhtp_res (*evhtp_pre_accept_cb)(evhtp_conn_t * conn, void * arg);
+typedef evhtp_res (*evhtp_post_accept_cb)(evhtp_conn_t * conn, void * arg);
+typedef evhtp_res (*evhtp_hook_header_cb)(evhtp_req_t * req, evhtp_hdr_t * hdr, void * arg);
+typedef evhtp_res (*evhtp_hook_headers_cb)(evhtp_req_t * req, evhtp_hdrs_t * hdr, void * arg);
+typedef evhtp_res (*evhtp_hook_path_cb)(evhtp_req_t * req, evhtp_path_t * path, void * arg);
+typedef evhtp_res (*evhtp_hook_read_cb)(evhtp_req_t * req, struct evbuffer * buf, void * arg);
+typedef evhtp_res (*evhtp_hook_req_fini_cb)(evhtp_req_t * req, void * arg);
+typedef evhtp_res (*evhtp_hook_conn_fini_cb)(evhtp_conn_t * conn, void * arg);
+typedef evhtp_res (*evhtp_hook_chunk_new_cb)(evhtp_req_t * r, uint64_t len, void * arg);
+typedef evhtp_res (*evhtp_hook_chunk_fini_cb)(evhtp_req_t * r, void * arg);
+typedef evhtp_res (*evhtp_hook_chunks_fini_cb)(evhtp_req_t * r, void * arg);
+typedef evhtp_res (*evhtp_hook_headers_start_cb)(evhtp_req_t * r, void * arg);
+typedef evhtp_res (*evhtp_hook_hostname_cb)(evhtp_req_t * r, const char * hostname, void * arg);
+typedef evhtp_res (*evhtp_hook_write_cb)(evhtp_conn_t * conn, void * arg);
 
 typedef int (*evhtp_kvs_iterator)(evhtp_kv_t * kv, void * arg);
-typedef int (*evhtp_headers_iterator)(evhtp_header_t * header, void * arg);
+typedef int (*evhtp_hdrs_iterator)(evhtp_hdr_t * header, void * arg);
 
 /**
  * @brief creates a new evhtp_t instance
@@ -282,13 +282,13 @@ evhtp_callback_t * evhtp_set_regex_cb(evhtp_t * htp, const char * pattern, evhtp
 evhtp_callback_t * evhtp_set_glob_cb(evhtp_t * htp, const char * pattern, evhtp_callback_cb cb, void * arg);
 
 /**
- * @brief sets a callback hook for either a connection or a path/regex .
+ * @brief sets a callback hook for either a conn or a path/regex .
  *
- * A user may set a variety of hooks either per-connection, or per-callback.
- * This allows the developer to hook into various parts of the request processing
+ * A user may set a variety of hooks either per-conn, or per-callback.
+ * This allows the developer to hook into various parts of the req processing
  * cycle.
  *
- * a per-connection hook can be set at any time, but it is recommended to set these
+ * a per-conn hook can be set at any time, but it is recommended to set these
  * during either a pre-accept phase, or post-accept phase. This allows a developer
  * to set hooks before any other hooks are called.
  *
@@ -307,11 +307,11 @@ evhtp_callback_t * evhtp_set_glob_cb(evhtp_t * htp, const char * pattern, evhtp_
  *
  * With the above example, once libevhtp has determined that it has a user-defined
  * callback for /anything/.*; anything_headers_cb will be executed after all headers
- * have been parsed, and anything_fini_cb will be executed before the request is
+ * have been parsed, and anything_fini_cb will be executed before the req is
  * free()'d.
  *
- * The same logic applies to per-connection hooks, but it should be noted that if
- * a per-callback hook is set, the per-connection hook will be ignored.
+ * The same logic applies to per-conn hooks, but it should be noted that if
+ * a per-callback hook is set, the per-conn hook will be ignored.
  *
  * @param hooks double pointer to the evhtp_hooks_t structure
  * @param type the hook type
@@ -341,8 +341,8 @@ int evhtp_unset_hook(evhtp_hooks_t ** hooks, evhtp_hook_type type);
  */
 int evhtp_unset_all_hooks(evhtp_hooks_t ** hooks);
 
-int evhtp_request_set_hook(evhtp_request_t * r, evhtp_hook_type type, evhtp_hook cb, void * arg);
-int evhtp_connection_set_hook(evhtp_connection_t * c, evhtp_hook_type type, evhtp_hook cb, void * arg);
+int evhtp_req_set_hook(evhtp_req_t * r, evhtp_hook_type type, evhtp_hook cb, void * arg);
+int evhtp_conn_set_hook(evhtp_conn_t * c, evhtp_hook_type type, evhtp_hook cb, void * arg);
 int evhtp_callback_set_hook(evhtp_callback_t * c, evhtp_hook_type type, evhtp_hook cb, void * arg);
 
 /**
@@ -381,10 +381,10 @@ void evhtp_unbind_socket(evhtp_t * htp);
  */
 int  evhtp_bind_sockaddr(evhtp_t * htp, struct sockaddr *, size_t sin_len, int backlog);
 
-void evhtp_send_reply(evhtp_request_t * request, evhtp_res code);
-void evhtp_send_reply_start(evhtp_request_t * request, evhtp_res code);
-void evhtp_send_reply_body(evhtp_request_t * request, struct evbuffer * buf);
-void evhtp_send_reply_end(evhtp_request_t * request);
+void evhtp_send_reply(evhtp_req_t * req, evhtp_res code);
+void evhtp_send_reply_start(evhtp_req_t * req, evhtp_res code);
+void evhtp_send_reply_body(evhtp_req_t * req, struct evbuffer * buf);
+void evhtp_send_reply_end(evhtp_req_t * req);
 
 /**
  * @brief Determine if a response should have a body.
@@ -399,28 +399,28 @@ int evhtp_response_needs_body(const evhtp_res code, const evhtp_method method);
  * @brief start a chunked response. If data already exists on the output buffer,
  *        this will be converted to the first chunk.
  *
- * @param request
+ * @param req
  * @param code
  */
-void evhtp_send_reply_chunk_start(evhtp_request_t * request, evhtp_res code);
+void evhtp_send_reply_chunk_start(evhtp_req_t * req, evhtp_res code);
 
 
 /**
  * @brief send a chunk reply.
  *
- * @param request
+ * @param req
  * @param buf
  */
-void evhtp_send_reply_chunk(evhtp_request_t * request, struct evbuffer * buf);
+void evhtp_send_reply_chunk(evhtp_req_t * req, struct evbuffer * buf);
 
 
 /**
  * @brief call when all chunks have been sent and you wish to send the last
  *        bits. This will add the last 0CRLFCRCL and call send_reply_end().
  *
- * @param request
+ * @param req
  */
-void evhtp_send_reply_chunk_end(evhtp_request_t * request);
+void evhtp_send_reply_chunk_end(evhtp_req_t * req);
 
 /**
  * @brief creates a new evhtp_callback_t structure.
@@ -553,173 +553,173 @@ evhtp_query_t * evhtp_parse_query(const char * query, size_t len);
 int evhtp_unescape_string(unsigned char ** out, unsigned char * str, size_t str_len);
 
 /**
- * @brief creates a new evhtp_header_t key/val structure
+ * @brief creates a new evhtp_hdr_t key/val structure
  *
  * @param key a null terminated string
  * @param val a null terminated string
  * @param kalloc if 1, key will be copied, otherwise no copy performed
  * @param valloc if 1, val will be copied, otehrwise no copy performed
  *
- * @return evhtp_header_t * or NULL on error
+ * @return evhtp_hdr_t * or NULL on error
  */
-evhtp_header_t * evhtp_header_new(const char * key, const char * val, char kalloc, char valloc);
+evhtp_hdr_t * evhtp_hdr_new(const char * key, const char * val, char kalloc, char valloc);
 
 /**
- * @brief creates a new evhtp_header_t, sets only the key, and adds to the
- *        evhtp_headers TAILQ
+ * @brief creates a new evhtp_hdr_t, sets only the key, and adds to the
+ *        evhtp_hdrs TAILQ
  *
- * @param headers the evhtp_headers_t TAILQ (evhtp_kv_t)
+ * @param headers the evhtp_hdrs_t TAILQ (evhtp_kv_t)
  * @param key a null terminated string
  * @param kalloc if 1 the string will be copied, otherwise assigned
  *
- * @return an evhtp_header_t pointer or NULL on error
+ * @return an evhtp_hdr_t pointer or NULL on error
  */
-evhtp_header_t * evhtp_header_key_add(evhtp_headers_t * headers, const char * key, char kalloc);
+evhtp_hdr_t * evhtp_hdr_key_add(evhtp_hdrs_t * headers, const char * key, char kalloc);
 
 
 /**
  * @brief finds the last header in the headers tailq and adds the value
  *
- * @param headers the evhtp_headers_t TAILQ (evhtp_kv_t)
+ * @param headers the evhtp_hdrs_t TAILQ (evhtp_kv_t)
  * @param val a null terminated string
  * @param valloc if 1 the string will be copied, otherwise assigned
  *
- * @return an evhtp_header_t pointer or NULL on error
+ * @return an evhtp_hdr_t pointer or NULL on error
  */
-evhtp_header_t * evhtp_header_val_add(evhtp_headers_t * headers, const char * val, char valloc);
+evhtp_hdr_t * evhtp_hdr_val_add(evhtp_hdrs_t * headers, const char * val, char valloc);
 
 
 /**
- * @brief adds an evhtp_header_t to the end of the evhtp_headers_t tailq
+ * @brief adds an evhtp_hdr_t to the end of the evhtp_hdrs_t tailq
  *
  * @param headers
  * @param header
  */
-void evhtp_headers_add_header(evhtp_headers_t * headers, evhtp_header_t * header);
+void evhtp_hdrs_add_header(evhtp_hdrs_t * headers, evhtp_hdr_t * header);
 
 /**
- * @brief finds the value of a key in a evhtp_headers_t structure
+ * @brief finds the value of a key in a evhtp_hdrs_t structure
  *
- * @param headers the evhtp_headers_t tailq
+ * @param headers the evhtp_hdrs_t tailq
  * @param key the key to find
  *
  * @return the value of the header key if found, NULL if not found.
  */
-const char * evhtp_header_find(evhtp_headers_t * headers, const char * key);
+const char * evhtp_hdr_find(evhtp_hdrs_t * headers, const char * key);
 
-#define evhtp_header_find         evhtp_kv_find
-#define evhtp_headers_find_header evhtp_kvs_find_kv
-#define evhtp_headers_for_each    evhtp_kvs_for_each
-#define evhtp_header_new          evhtp_kv_new
-#define evhtp_header_free         evhtp_kv_free
-#define evhtp_headers_new         evhtp_kvs_new
-#define evhtp_headers_free        evhtp_kvs_free
-#define evhtp_header_rm_and_free  evhtp_kv_rm_and_free
-#define evhtp_headers_add_header  evhtp_kvs_add_kv
-#define evhtp_headers_add_headers evhtp_kvs_add_kvs
-#define evhtp_query_new           evhtp_kvs_new
-#define evhtp_query_free          evhtp_kvs_free
+#define evhtp_hdr_find         evhtp_kv_find
+#define evhtp_hdrs_find_header evhtp_kvs_find_kv
+#define evhtp_hdrs_for_each    evhtp_kvs_for_each
+#define evhtp_hdr_new          evhtp_kv_new
+#define evhtp_hdr_free         evhtp_kv_free
+#define evhtp_hdrs_new         evhtp_kvs_new
+#define evhtp_hdrs_free        evhtp_kvs_free
+#define evhtp_hdr_rm_and_free  evhtp_kv_rm_and_free
+#define evhtp_hdrs_add_header  evhtp_kvs_add_kv
+#define evhtp_hdrs_add_headers evhtp_kvs_add_kvs
+#define evhtp_query_new        evhtp_kvs_new
+#define evhtp_query_free       evhtp_kvs_free
 
 
 /**
- * @brief returns the htp_method enum version of the request method.
+ * @brief returns the htp_method enum version of the req method.
  *
  * @param r
  *
  * @return htp_method enum
  */
-evhtp_method evhtp_request_get_method(evhtp_request_t * r);
+evhtp_method evhtp_req_get_method(evhtp_req_t * r);
 
-void         evhtp_connection_pause(evhtp_connection_t * connection);
-void         evhtp_connection_resume(evhtp_connection_t * connection);
-void         evhtp_request_pause(evhtp_request_t * request);
-void         evhtp_request_resume(evhtp_request_t * request);
+void         evhtp_conn_pause(evhtp_conn_t * conn);
+void         evhtp_conn_resume(evhtp_conn_t * conn);
+void         evhtp_req_pause(evhtp_req_t * req);
+void         evhtp_req_resume(evhtp_req_t * req);
 
 
 /**
- * @brief returns the underlying evhtp_connection_t structure from a request
+ * @brief returns the underlying evhtp_conn_t structure from a req
  *
- * @param request
+ * @param req
  *
- * @return evhtp_connection_t on success, otherwise NULL
+ * @return evhtp_conn_t on success, otherwise NULL
  */
-evhtp_connection_t * evhtp_request_get_connection(evhtp_request_t * request);
+evhtp_conn_t * evhtp_req_get_conn(evhtp_req_t * req);
 
 /**
- * @brief Sets the connections underlying bufferevent
+ * @brief Sets the conns underlying bufferevent
  *
  * @param conn
  * @param bev
  */
-void evhtp_connection_set_bev(evhtp_connection_t * conn, struct bufferevent * bev);
+void evhtp_conn_set_bev(evhtp_conn_t * conn, struct bufferevent * bev);
 
 /**
- * @brief sets the underlying bufferevent for a evhtp_request
+ * @brief sets the underlying bufferevent for a evhtp_req
  *
- * @param request
+ * @param req
  * @param bev
  */
-void evhtp_request_set_bev(evhtp_request_t * request, struct bufferevent * bev);
+void evhtp_req_set_bev(evhtp_req_t * req, struct bufferevent * bev);
 
 
 /**
- * @brief returns the underlying connections bufferevent
+ * @brief returns the underlying conns bufferevent
  *
  * @param conn
  *
  * @return bufferevent on success, otherwise NULL
  */
-struct bufferevent * evhtp_connection_get_bev(evhtp_connection_t * conn);
-struct event_base  * evhtp_connection_get_evbase(evhtp_connection_t * conn);
+struct bufferevent * evhtp_conn_get_bev(evhtp_conn_t * conn);
+struct event_base  * evhtp_conn_get_evbase(evhtp_conn_t * conn);
 
 
 /**
- * @brief sets a connection-specific read/write timeout which overrides the
+ * @brief sets a conn-specific read/write timeout which overrides the
  *        global read/write settings.
  *
  * @param conn
  * @param r timeval for read
  * @param w timeval for write
  */
-void evhtp_connection_set_timeouts(evhtp_connection_t * conn, const struct timeval * r, const struct timeval * w);
+void evhtp_conn_set_timeouts(evhtp_conn_t * conn, const struct timeval * r, const struct timeval * w);
 
 /**
- * @brief returns the underlying requests bufferevent
+ * @brief returns the underlying reqs bufferevent
  *
- * @param request
+ * @param req
  *
  * @return bufferevent on success, otherwise NULL
  */
-struct bufferevent * evhtp_request_get_bev(evhtp_request_t * request);
-struct event_base  * evhtp_request_get_evbase(evhtp_request_t * request);
+struct bufferevent * evhtp_req_get_bev(evhtp_req_t * req);
+struct event_base  * evhtp_req_get_evbase(evhtp_req_t * req);
 
 
 /**
  * @brief let a user take ownership of the underlying bufferevent and free
  *        all other underlying resources.
  *
- * Warning: this will free all evhtp_connection/request structures, remove all
+ * Warning: this will free all evhtp_conn/req structures, remove all
  * associated hooks and reset the bufferevent to defaults, i.e., disable
  * EV_READ, and set all callbacks to NULL.
  *
- * @param connection
+ * @param conn
  *
- * @return underlying connections bufferevent.
+ * @return underlying conns bufferevent.
  */
-struct bufferevent * evhtp_connection_take_ownership(evhtp_connection_t * connection);
+struct bufferevent * evhtp_conn_take_ownership(evhtp_conn_t * conn);
 
 
 /**
- * @brief free's all connection related resources, this will also call your
- *        request fini hook and request fini hook.
+ * @brief free's all conn related resources, this will also call your
+ *        req fini hook and req fini hook.
  *
- * @param connection
+ * @param conn
  */
-void evhtp_connection_free(evhtp_connection_t * connection);
-void evhtp_request_free(evhtp_request_t * request);
+void evhtp_conn_free(evhtp_conn_t * conn);
+void evhtp_req_free(evhtp_req_t * req);
 
 /**
- * @brief set a max body size to accept for an incoming request, this will
+ * @brief set a max body size to accept for an incoming req, this will
  *        default to unlimited.
  *
  * @param htp
@@ -729,36 +729,36 @@ void evhtp_set_max_body_size(evhtp_t * htp, uint64_t len);
 
 
 /**
- * @brief set a max body size for a specific connection, this will default to
+ * @brief set a max body size for a specific conn, this will default to
  *        the size set by evhtp_set_max_body_size
  *
  * @param conn
  * @param len
  */
-void evhtp_connection_set_max_body_size(evhtp_connection_t * conn, uint64_t len);
+void evhtp_conn_set_max_body_size(evhtp_conn_t * conn, uint64_t len);
 
 /**
- * @brief just calls evhtp_connection_set_max_body_size for the request.
+ * @brief just calls evhtp_conn_set_max_body_size for the req.
  *
- * @param request
+ * @param req
  * @param len
  */
-void evhtp_request_set_max_body_size(evhtp_request_t * request, uint64_t len);
+void evhtp_req_set_max_body_size(evhtp_req_t * req, uint64_t len);
 
 /**
- * @brief sets a maximum number of requests that a single connection can make.
+ * @brief sets a maximum number of reqs that a single conn can make.
  *
  * @param htp
  * @param num
  */
-void evhtp_set_max_keepalive_requests(evhtp_t * htp, uint64_t num);
+void evhtp_set_max_keepalive_reqs(evhtp_t * htp, uint64_t num);
 
-#define evhtp_request_content_len evhtp_request_get_content_len
-struct evbuffer * evhtp_request_buffer_out(evhtp_request_t * req);
-struct evbuffer * evhtp_request_buffer_in(evhtp_request_t * req);
-uint64_t          evhtp_request_get_content_len(evhtp_request_t * req);
-evhtp_headers_t * evhtp_request_get_headers_out(evhtp_request_t * req);
-evhtp_headers_t * evhtp_request_get_headers_in(evhtp_request_t * req);
+#define evhtp_req_content_len evhtp_req_get_content_len
+struct evbuffer * evhtp_req_buffer_out(evhtp_req_t * req);
+struct evbuffer * evhtp_req_buffer_in(evhtp_req_t * req);
+uint64_t          evhtp_req_get_content_len(evhtp_req_t * req);
+evhtp_hdrs_t    * evhtp_req_get_headers_out(evhtp_req_t * req);
+evhtp_hdrs_t    * evhtp_req_get_headers_in(evhtp_req_t * req);
 
 #define EVHTP_PATH_GET_FN(vname, vtype) vtype evhtp_path_get_ ## vname(evhtp_path_t *);
 EVHTP_PATH_GET_FN(full, const char *);
@@ -769,25 +769,29 @@ EVHTP_PATH_GET_FN(match_end, const char *);
 EVHTP_PATH_GET_FN(matched_soff, unsigned int);
 EVHTP_PATH_GET_FN(matched_eoff, unsigned int);
 
+#ifdef EVHTP_ENABLE_EVTHR
+int evhtp_use_threads(evhtp_t * htp, evhtp_thread_init_cb init_cb, int nthreads, void * arg);
+#endif
+
 /*****************************************************************
-* client request functions                                      *
+* client req functions                                      *
 *****************************************************************/
 
 /**
- * @brief allocate a new connection
+ * @brief allocate a new conn
  */
-evhtp_connection_t * evhtp_connection_new(struct event_base * evbase, const char * addr, uint16_t port);
+evhtp_conn_t * evhtp_conn_new(struct event_base * evbase, const char * addr, uint16_t port);
 
 /**
- * @brief allocate a new request
+ * @brief allocate a new req
  */
-evhtp_request_t * evhtp_request_new(evhtp_callback_cb cb, void * arg);
+evhtp_req_t * evhtp_req_new(evhtp_callback_cb cb, void * arg);
 
 /**
- * @brief make a client request
+ * @brief make a client req
  */
-int          evhtp_make_request(evhtp_connection_t * c, evhtp_request_t * r, evhtp_method meth, const char * uri);
-unsigned int evhtp_request_status(evhtp_request_t *);
+int          evhtp_make_req(evhtp_conn_t * c, evhtp_req_t * r, evhtp_method meth, const char * uri);
+unsigned int evhtp_req_status(evhtp_req_t *);
 
 #ifdef __cplusplus
 }
