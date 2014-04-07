@@ -325,12 +325,12 @@ _str_to_ssize_t(char * str, size_t n) {
     return value;
 }
 
-evhtp_parser_error
+inline evhtp_parser_error
 evhtp_parser_get_error(evhtp_parser * p) {
     return p->error;
 }
 
-const char *
+inline const char *
 evhtp_parser_get_strerror(evhtp_parser * p) {
     evhtp_parser_error e = evhtp_parser_get_error(p);
 
@@ -341,12 +341,12 @@ evhtp_parser_get_strerror(evhtp_parser * p) {
     return errstr_map[e];
 }
 
-unsigned int
+inline unsigned int
 evhtp_parser_get_status(evhtp_parser * p) {
     return p->status;
 }
 
-int
+inline int
 evhtp_parser_should_keep_alive(evhtp_parser * p) {
     if (p->major > 0 && p->minor > 0) {
         if (p->flags & parser_flag_connection_close) {
@@ -365,17 +365,17 @@ evhtp_parser_should_keep_alive(evhtp_parser * p) {
     return 0;
 }
 
-evhtp_parser_scheme
+inline evhtp_parser_scheme
 evhtp_parser_get_scheme(evhtp_parser * p) {
     return p->scheme;
 }
 
-evhtp_method
+inline evhtp_method
 evhtp_parser_get_method(evhtp_parser * p) {
     return p->method;
 }
 
-const char *
+inline const char *
 evhtp_parser_get_methodstr_m(evhtp_method meth) {
     if (meth >= evhtp_method_UNKNOWN) {
         return NULL;
@@ -384,62 +384,62 @@ evhtp_parser_get_methodstr_m(evhtp_method meth) {
     return method_strmap[meth];
 }
 
-const char *
+inline const char *
 evhtp_parser_get_methodstr(evhtp_parser * p) {
     return evhtp_parser_get_methodstr_m(p->method);
 }
 
-void
+inline void
 evhtp_parser_set_major(evhtp_parser * p, unsigned char major) {
     p->major = major;
 }
 
-void
+inline void
 evhtp_parser_set_minor(evhtp_parser * p, unsigned char minor) {
     p->minor = minor;
 }
 
-unsigned char
+inline unsigned char
 evhtp_parser_get_major(evhtp_parser * p) {
     return p->major;
 }
 
-unsigned char
+inline unsigned char
 evhtp_parser_get_minor(evhtp_parser * p) {
     return p->minor;
 }
 
-unsigned char
+inline unsigned char
 evhtp_parser_get_multipart(evhtp_parser * p) {
     return p->multipart;
 }
 
-void *
+inline void *
 evhtp_parser_get_userdata(evhtp_parser * p) {
     return p->userdata;
 }
 
-void
+inline void
 evhtp_parser_set_userdata(evhtp_parser * p, void * ud) {
     p->userdata = ud;
 }
 
-uint64_t
+inline uint64_t
 evhtp_parser_get_content_pending(evhtp_parser * p) {
     return p->content_len;
 }
 
-uint64_t
+inline uint64_t
 evhtp_parser_get_content_length(evhtp_parser * p) {
     return p->orig_content_len;
 }
 
-uint64_t
+inline uint64_t
 evhtp_parser_get_bytes_read(evhtp_parser * p) {
     return p->bytes_read;
 }
 
-uint64_t
+inline uint64_t
 evhtp_parser_get_total_bytes_read(evhtp_parser * p) {
     return p->total_bytes_read;
 }
@@ -455,7 +455,7 @@ evhtp_parser_init(evhtp_parser * p, evhtp_parser_type type) {
     p->type   = type;
 }
 
-evhtp_parser *
+inline evhtp_parser *
 evhtp_parser_new(void) {
     return malloc(sizeof(evhtp_parser));
 }
