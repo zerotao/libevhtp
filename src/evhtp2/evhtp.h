@@ -111,7 +111,8 @@ enum evhtp_hook_type {
     evhtp_hook_on_headers_start,
     evhtp_hook_on_error,    /**< type which defines to hook whenever an error occurs */
     evhtp_hook_on_hostname,
-    evhtp_hook_on_write
+    evhtp_hook_on_write,
+    evhtp_hook_on_event
 };
 
 
@@ -191,6 +192,7 @@ typedef evhtp_res (*evhtp_hook_chunks_fini_cb)(evhtp_req_t * r, void * arg);
 typedef evhtp_res (*evhtp_hook_headers_start_cb)(evhtp_req_t * r, void * arg);
 typedef evhtp_res (*evhtp_hook_hostname_cb)(evhtp_req_t * r, const char * hostname, void * arg);
 typedef evhtp_res (*evhtp_hook_write_cb)(evhtp_conn_t * conn, void * arg);
+typedef void (*evhtp_hook_event_cb)(evhtp_conn_t * conn, short events, void * arg);
 
 typedef int (*evhtp_kvs_iterator)(evhtp_kv_t * kv, void * arg);
 typedef int (*evhtp_hdrs_iterator)(evhtp_hdr_t * header, void * arg);

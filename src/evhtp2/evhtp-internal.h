@@ -87,6 +87,7 @@ struct evhtp_conn {
     uint8_t              owner         : 1;   /**< set to 1 if this structure owns the bufferevent */
     uint8_t              vhost_via_sni : 1;   /**< set to 1 if the vhost was found via SSL SNI */
     uint8_t              free_conn     : 1;
+    uint8_t              connected     : 1;
     uint64_t             max_body_size;
     uint64_t             body_bytes_read;
     uint64_t             num_reqs;
@@ -121,10 +122,10 @@ struct evhtp_req {
     uint8_t           keepalive : 1;       /**< set to 1 if the conn is keep-alive */
     uint8_t           finished  : 1;       /**< set to 1 if the req is fully processed */
     uint8_t           chunked   : 1;       /**< set to 1 if the req is chunked */
+    uint8_t           error     : 1;
 
     evhtp_callback_cb cb;                  /**< the function to call when fully processed */
     void            * cbarg;               /**< argument which is passed to the cb function */
-    int               error;
 
     TAILQ_ENTRY(evhtp_req) next;
 };
@@ -239,6 +240,7 @@ struct evhtp_hooks {
     evhtp_hook_chunks_fini_cb   on_chunks_fini;
     evhtp_hook_hostname_cb      on_hostname;
     evhtp_hook_write_cb         on_write;
+    evhtp_hook_event_cb         on_event;
 
     void * on_headers_start_arg;
     void * on_header_arg;
@@ -253,6 +255,7 @@ struct evhtp_hooks {
     void * on_chunks_fini_arg;
     void * on_hostname_arg;
     void * on_write_arg;
+    void * on_event_arg;
 };
 
 evhtp_t * evhtp_req_find_vhost(evhtp_t * evhtp, const char * name);

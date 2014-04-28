@@ -1299,7 +1299,7 @@ static int
 _evhtp_req_parser_fini(evhtp_parser * p) {
     evhtp_conn_t * c = evhtp_parser_get_userdata(p);
 
-    if (c->paused) {
+    if (c->paused == 1) {
         return -1;
     }
 
@@ -1335,7 +1335,7 @@ _evhtp_req_parser_fini(evhtp_parser * p) {
         (c->req->cb)(c->req, c->req->cbarg);
     }
 
-    if (c->paused) {
+    if (c->paused == 1) {
         return -1;
     }
 
@@ -1595,7 +1595,7 @@ _evhtp_conn_writecb(struct bufferevent * bev, void * arg) {
         }
     }
 
-    if (c->req->keepalive) {
+    if (c->req->keepalive == 1) {
         _evhtp_req_free(c->req);
 
         c->req = NULL;
@@ -1629,8 +1629,14 @@ static void
 _evhtp_conn_eventcb(struct bufferevent * bev, short events, void * arg) {
     evhtp_conn_t * c = arg;
 
+    if (c->hooks && c->hooks->on_event) {
+        (c->hooks->on_event)(c, events, c->hooks->on_event_arg);
+    }
+
     if ((events & BEV_EVENT_CONNECTED)) {
         if (c->type == evhtp_type_client) {
+            c->connected = 1;
+
             bufferevent_setcb(bev,
                               _evhtp_conn_readcb,
                               _evhtp_conn_writecb,
@@ -1667,7 +1673,8 @@ _evhtp_conn_eventcb(struct bufferevent * bev, short events, void * arg) {
         }
     }
 
-    c->error = 1;
+    c->error     = 1;
+    c->connected = 0;
 
     if (c->req && c->req->hooks && c->req->hooks->on_error) {
         (*c->req->hooks->on_error)(c->req, events,
@@ -1789,13 +1796,14 @@ _evhtp_conn_new(evhtp_t * htp, evutil_socket_t sock, evhtp_type type) {
         return NULL;
     }
 
-    conn->error  = 0;
-    conn->owner  = 1;
-    conn->paused = evhtp_pause_s_nil;
-    conn->sock   = sock;
-    conn->htp    = htp;
-    conn->type   = type;
-    conn->parser = evhtp_parser_new();
+    conn->error     = 0;
+    conn->owner     = 1;
+    conn->connected = 0;
+    conn->paused    = evhtp_pause_s_nil;
+    conn->sock      = sock;
+    conn->htp       = htp;
+    conn->type      = type;
+    conn->parser    = evhtp_parser_new();
 
     evhtp_parser_init(conn->parser, ptype);
     evhtp_parser_set_userdata(conn->parser, conn);
@@ -2512,11 +2520,6 @@ evhtp_send_reply_body(evhtp_req_t * req, struct evbuffer * buf) {
 void
 evhtp_send_reply_end(evhtp_req_t * req) {
     req->finished = 1;
-
-#if 0
-    _evhtp_conn_writecb(evhtp_req_get_bev(req),
-                        evhtp_req_get_conn(req));
-#endif
 }
 
 void
@@ -2627,9 +2630,11 @@ evhtp_send_reply_chunk(evhtp_req_t * req, struct evbuffer * buf) {
                             (unsigned)evbuffer_get_length(buf));
     }
     evhtp_send_reply_body(req, buf);
-    if (req->chunked) {
+
+    if (req->chunked == 1) {
         evbuffer_add(output, "\r\n", 2);
     }
+
     bufferevent_flush(req->conn->bev, EV_WRITE, BEV_FLUSH);
 }
 
@@ -2906,6 +2911,10 @@ evhtp_set_hook(evhtp_hooks_t ** hooks, evhtp_hook_type type, evhtp_hook cb, void
             (*hooks)->on_write = (evhtp_hook_write_cb)cb;
             (*hooks)->on_write_arg         = arg;
             break;
+        case evhtp_hook_on_event:
+            (*hooks)->on_event = (evhtp_hook_event_cb)cb;
+            (*hooks)->on_event_arg         = arg;
+            break;
         default:
             return -1;
     }     /* switch */
@@ -2971,6 +2980,10 @@ evhtp_unset_all_hooks(evhtp_hooks_t ** hooks) {
     }
 
     if (evhtp_unset_hook(hooks, evhtp_hook_on_write)) {
+        return -1;
+    }
+
+    if (evhtp_unset_hook(hooks, evhtp_hook_on_event)) {
         return -1;
     }
 
