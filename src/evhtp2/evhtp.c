@@ -315,14 +315,7 @@ _evhtp_quick_hash(const char * str) {
  *
  * @return 1 if HTTP/1.0, else 0
  */
-static inline int
-_evhtp_is_http_10(const char major, const char minor) {
-    if (major >= 1 && minor <= 0) {
-        return 1;
-    }
-
-    return 0;
-}
+#define _evhtp_is_http_10(__major, __minor) (__major == 1 && __minor == 0) ? 1 : 0
 
 /**
  * @brief helper function to determine if http version is HTTP/1.1
@@ -332,14 +325,7 @@ _evhtp_is_http_10(const char major, const char minor) {
  *
  * @return 1 if HTTP/1.1, else 0
  */
-static inline int
-_evhtp_is_http_11(const char major, const char minor) {
-    if (major >= 1 && minor >= 1) {
-        return 1;
-    }
-
-    return 0;
-}
+#define _evhtp_is_http_11(__major, __minor) (__major == 1 && __minor >= 1) ? 1 : 0
 
 /**
  * @brief returns the HTTP protocol version
