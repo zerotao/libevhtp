@@ -18,6 +18,8 @@ if (EVHTP_ENABLE_REGEX)
 	add_subdirectory(regex)
 endif()
 
+add_subdirectory(ws)
+
 add_library(evhtp_parser ${EVHTP_BUILD_TYPE} evhtp_parser.c)
 
 get_property(libevhtp_SRCS GLOBAL PROPERTY libevhtp_SRCS)

@@ -22,9 +22,17 @@ extern "C" {
          (var) = (tvar))
 #endif
 
+#ifndef EVHTP_HEX_DIGITS
+#define EVHTP_HEX_DIGITS "0123456789abcdef"
+#endif
+
+#ifndef EVHTP_BIT_ISSET
+#define EVHTP_BIT_ISSET(target, bit) \
+    (((target) & (bit)) ? 1 : 0)
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif
-
 #endif
-
