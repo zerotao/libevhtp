@@ -39,6 +39,70 @@
 #define EVHTP_WS_MAGIC    "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 #define EVHTP_WS_MAGIC_SZ 36
 
+typedef struct evhtp_ws_frame_s     evhtp_ws_frame;
+typedef struct evhtp_ws_frame_hdr_s evhtp_ws_frame_hdr;
+
+struct evhtp_ws_frame_hdr_s {
+    uint8_t fin    : 1,
+            rsv1   : 1,
+            rsv2   : 1,
+            rsv3   : 1,
+            opcode : 4;
+
+    #define OP_CONT          0x0
+    #define OP_TEXT          0x1
+    #define OP_BIN           0x2
+    #define OP_NCONTROL_RES1 0x3
+    #define OP_NCONTROL_RES2 0x4
+    #define OP_NCONTROL_RES3 0x5
+    #define OP_NCONTROL_RES4 0x6
+    #define OP_NCONTROL_RES5 0x7
+    #define OP_CLOSE         0x8
+    #define OP_PING          0x9
+    #define OP_PONG          0xA
+    #define OP_CONTROL_RES1  0xB
+    #define OP_CONTROL_RES2  0xC
+    #define OP_CONTROL_RES3  0xD
+    #define OP_CONTROL_RES4  0xE
+    #define OP_CONTROL_RES5  0xF
+
+    uint8_t mask : 1,
+            len  : 7;
+};
+
+struct evhtp_ws_frame_s {
+    evhtp_ws_frame_hdr hdr;
+
+    union {
+        uint16_t len16;
+        uint64_t len64;
+    } extended_len;
+
+    uint32_t masking_key;
+};
+
+enum evhtp_ws_parser_state {
+    ws_s_start = 0,
+    ws_s_fin_rsv_opcode,
+    ws_s_mask_payload_len,
+    ws_s_ext_payload_len_16,
+    ws_s_ext_payload_len_64,
+    ws_s_masking_key,
+    ws_s_payload
+};
+
+typedef enum evhtp_ws_parser_state evhtp_ws_parser_state;
+
+struct evhtp_ws_parser_s {
+    evhtp_ws_frame     frame;
+    evhtp_parser_state state;
+};
+
+#define HAS_MASKING_KEY_HDR(__frame)      ((__frame)->mask == 1)
+#define HAS_EXTENDED_PAYLOAD_HDR(__frame) ((__frame)->len >= 126)
+#define EXTENDED_PAYLOAD_HDR_LEN(__frame) \
+    (((__frame)->len >= 126) ? (((__frame)->len == 126) ? 16 : 64) : 0
+
 int
 evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
     const char * ws_key;
@@ -46,10 +110,10 @@ evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
     size_t       magic_w_ws_key_len;
     size_t       ws_key_len;
     sha1_ctx     sha;
-    char       * out        = NULL;
-    size_t       out_bytes  = 0;
+    char       * out = NULL;
+    size_t       out_bytes = 0;
     char         digest[20] = { 0 };
-    char         sha1[42]   = { 0 };
+    char         sha1[42] = { 0 };
 
     if (!hdrs_in || !hdrs_out) {
         return -1;
@@ -167,7 +231,7 @@ evhtp_websocket_get_content( const char *data, int data_length, unsigned char *d
     if ( ( unsigned char )data[0] != 129 ) {
         dst = NULL;
         if ( ( unsigned char )data[0] == 136 ) {
-            /* WebSocket client disconnected */
+        /* WebSocket client disconnected */
             return -2;
         }
         /* Unknown error */
@@ -453,7 +517,7 @@ evhtp_websocket_client_version( const char *data ) {
         if ( ( unsigned char )data[0] != 129 ) {
             dst = NULL;
             if ( ( unsigned char )data[0] == 136 ) {
-                /* WebSocket client disconnected */
+            /* WebSocket client disconnected */
                 return -2;
             }
             /* Unknown error */
