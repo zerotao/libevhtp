@@ -40,6 +40,72 @@ static void _sha1_transform(uint32_t state[5], uint8_t buffer[64]);
 #define R4(v, w, x, y, z, i) z += (w ^ x ^ y) + blk(i) + 0xCA62C1D6 + rol(v, 5); w = rol(w, 30);
 
 
+size_t
+binary_to_hex(void *data, size_t dlen, char *hex, size_t hlen) {
+    size_t n;
+    char * dptr = hex;
+
+    for (n = 0; (n < dlen) && ((n * 2) < hlen); n++, dptr += 2) {
+        uint8_t c = ((uint8_t *)data)[n];
+        if (hex != NULL) {
+            dptr[0] = EVHTP_HEX_DIGITS[((c >> 4) & 0xF)];
+            dptr[1] = EVHTP_HEX_DIGITS[(c & 0xF)];
+        }
+    }
+    return n * 2;
+}
+
+static int8_t
+hex_to_char(char hex) {
+    uint8_t c = hex;
+
+    if (c >= '0' && c <= '9') {
+        c = c - 48;
+    } else if (c >= 'A' && c <= 'F') {
+        c = c - 55;  /* 65 - 10 */
+    } else if (c >= 'a' && c <= 'f') {
+        c = c - 87;  /* 97 - 10 */
+    } else {
+        return -1;
+    }
+    return c;
+}
+
+static size_t
+hex_to_binary(char *hex, size_t hlen, void *data, size_t dlen) {
+    size_t n;
+    size_t y = 0;
+
+    if (data == NULL) {
+        dlen = -1;
+    }
+
+    for (n = 0, y = 0; n < hlen && *hex != '\0' && y < dlen; n++) {
+        int8_t c;
+        int8_t c2;
+        int8_t cc = 0;
+
+        if ((c = hex_to_char(*hex++)) == -1) {
+            errno = EINVAL;
+            return 0;
+        }
+
+        if ((c2 = hex_to_char(*hex++)) == -1) {
+            return 0;
+        } else {
+            n++;
+        }
+
+        cc = (c << 4) | (c2 & 0xF);
+
+        if (data != NULL) {
+            ((char *)data)[y] = (char)cc;
+        }
+        y++;
+    }
+    return y;
+}
+
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 static void
 _sha1_transform(uint32_t state[5], uint8_t buffer[64]) {

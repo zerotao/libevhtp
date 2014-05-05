@@ -19,4 +19,7 @@ target_link_libraries(test_basic ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
 add_executable(test_client EXCLUDE_FROM_ALL test_client.c)
 target_link_libraries(test_client ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
 
-add_dependencies(examples test test_basic test_client)
+add_executable(test_ws EXCLUDE_FROM_ALL test_ws.c)
+target_link_libraries(test_ws ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
+
+add_dependencies(examples test test_basic test_client test_ws)
