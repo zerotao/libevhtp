@@ -211,6 +211,11 @@ evhtp_thr_new(evhtp_thr_init_cb init_cb, void * args) {
     thread->rdr     = fds[0];
     thread->wdr     = fds[1];
 
+    if (thread->thr == NULL) {
+        evhtp_thr_free(thread);
+        return NULL;
+    }
+
     if (pthread_mutex_init(&thread->lock, NULL)) {
         evhtp_thr_free(thread);
         return NULL;

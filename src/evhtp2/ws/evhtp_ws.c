@@ -94,11 +94,10 @@ struct evhtp_ws_parser_s {
     evhtp_ws_frame        frame;
     evhtp_ws_parser_state state;
     uint64_t              content_len;
-    uint64_t              bytes_read;
-    size_t                buf_idx;
-    char                  buf[PARSER_STACK_MAX];
+    uint64_t              orig_content_len;
 };
 
+#define MIN_READ(a, b)                    ((a) < (b) ? (a) : (b))
 #define HAS_MASKING_KEY_HDR(__frame)      ((__frame)->mask == 1)
 #define HAS_EXTENDED_PAYLOAD_HDR(__frame) ((__frame)->len >= 126)
 #define EXTENDED_PAYLOAD_HDR_LEN(__frame) \
@@ -106,31 +105,29 @@ struct evhtp_ws_parser_s {
 
 ssize_t
 evhtp_ws_parser_run(evhtp_ws_parser * p, const char * data, size_t len) {
-    size_t i;
+    uint8_t byte;
+    char    c;
+    size_t  i;
 
-    i = len;
-
-    while (i <= len) {
-        uint8_t byte;
-        size_t  bytes_read = len - i;;
+    for (i = 0; i < len; i++) {
+        byte = (uint8_t)data[i];
 
         switch (p->state) {
             case ws_s_start:
+                memset(&p->frame, 0, sizeof(p->frame));
+
                 p->state            = ws_s_fin_rsv_opcode;
                 p->content_len      = 0;
-                p->bytes_read       = 0;
-                p->content_len      = 0;
-            /* fall through */
+                p->orig_content_len = 0;
+            /* fall-through */
             case ws_s_fin_rsv_opcode:
-                byte                = (uint8_t)data[i];
                 p->frame.hdr.fin    = (byte & 0x1);
                 p->frame.hdr.opcode = (byte & 0xF);
 
-                i -= sizeof(uint8_t);
                 p->state            = ws_s_mask_payload_len;
                 break;
             case ws_s_mask_payload_len:
-                byte                = (uint8_t)data[i];
+
                 p->frame.hdr.mask   = (byte & 0x1);
                 p->frame.hdr.len    = (byte & 0x7F);
 
@@ -154,18 +151,59 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, const char * data, size_t len) {
                         break;
                 }
 
-                i -= sizeof(uint8_t);
+                break;
+            case ws_s_ext_payload_len_16:
+                if (MIN_READ((const char *)(data + len) - &data[i], 2) < 2) {
+                    return i;
+                }
+
+                p->frame.payload_len = *(uint16_t *)&data[i];
+                p->content_len       = p->frame.payload_len;
+
+                if (p->frame.hdr.mask == 1) {
+                    p->state = ws_s_masking_key;
+                }
+
+                i       += 2;
+                p->state = ws_s_payload;
+
+                break;
+            case ws_s_ext_payload_len_64:
+                if (MIN_READ((const char *)(data + len) - &data[i], 8) < 8) {
+                    return i;
+                }
+
+                p->frame.payload_len = *(uint64_t *)&data[i];
+                p->content_len       = p->frame.payload_len;
+
+                i       += 8;
+                p->state = ws_s_payload;
                 break;
             case ws_s_payload:
-                /* printf("%zu of %zu payload bytes present\n", (p->frame.payload_len - i)); */
+            {
+                const char * pp      = &data[i];
+                const char * pe      = (const char *)(data + len);
+                size_t       to_read = MIN_READ(pe - pp, p->content_len);
 
-                i -= p->frame.payload_len - i;
+                if (to_read > 0) {
+                    /* printf("hook_body_run() %zu\n", to_read); */
 
-                break;
+                    p->content_len -= to_read;
+                    i += to_read - 1;
+                }
+
+                if (to_read == p->content_len) {
+                    if (p->content_len == 0) {
+                        /* printf("hook_on_msg_complete_run()\n"); */
+                        p->state = ws_s_start;
+                    }
+                }
+            }
+            break;
         } /* switch */
     }
 
-    return len - i;
+    return i;
 }         /* evhtp_ws_parser_run */
 
 int
