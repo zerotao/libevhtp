@@ -1,7 +1,13 @@
 /*
- * Thanks to Marcin Kelar for his code which I referenced as a starting point
- * for the websockets interface, his license is as follows. Changes have been
- * quite drastic, but he still needs mad propz.
+ * While this looks nothing like the original code, my initial point of
+ * reference was from Marcin Kelar's parser. His license is included here.
+ *
+ * Marcin originally had his code under the GPL license, I kept seeing his code
+ * referenced in other projects, but could not find the original (more
+ * specifically, the original license). I ended up finding his email
+ * address and asked if I could use it with a less restrictive license.
+ * He responded immediately and said yes, and he did! That's an awesome
+ * example of the OSS world. Thank you very much Mr. Kelar.
  *
  * The MIT License (MIT)
  *
@@ -24,6 +30,9 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * The original API can be found here:
+ * https://github.com/OrionExplorer/c-websocket
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -307,6 +316,7 @@ evhtp_ws_data_new(const char * data, size_t len) {
     evhtp_ws_data * ws_data;
     uint8_t         extra_bytes;
     uint8_t         frame_len;
+    size_t          ws_datalen;
 
     if (len <= 125) {
         frame_len = 0;
@@ -317,10 +327,9 @@ evhtp_ws_data_new(const char * data, size_t len) {
     }
 
     extra_bytes          = _fext_len[frame_len];
+    ws_datalen           = sizeof(evhtp_ws_data) + len + extra_bytes;
 
-    size_t l = sizeof(evhtp_ws_data) + len + extra_bytes;
-
-    ws_data              = calloc(l, 1);
+    ws_data              = calloc(ws_datalen, 1);
     ws_data->hdr.len     = frame_len ? frame_len : len;
     ws_data->hdr.fin     = 1;
     ws_data->hdr.opcode |= OP_TEXT;
@@ -354,26 +363,22 @@ evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len) {
         return NULL;
     }
 
-#if 0
-    if (ws_data->hdr.len < 126) {
-        payload_start = ws_data->payload;
-    } else {
-        payload_start = (unsigned char *)(ws_data->payload + _fext_len[ws_data->hdr.len]);
-    }
-#endif
     payload_start = (unsigned char *)(ws_data->payload);
 
     switch (ws_data->hdr.len) {
         case 126:
-            payload_end  = (unsigned char *)(payload_start + *(uint16_t *)ws_data->payload);
+            payload_end  = (unsigned char *)(payload_start +
+                                             *(uint16_t *)ws_data->payload);
             payload_end += 2;
             break;
         case 127:
-            payload_end  = (unsigned char *)(payload_start + *(uint64_t *)ws_data->payload);
+            payload_end  = (unsigned char *)(payload_start +
+                                             *(uint64_t *)ws_data->payload);
             payload_end += 8;
             break;
         default:
-            payload_end  = (unsigned char *)(payload_start + ws_data->hdr.len);
+            payload_end  = (unsigned char *)(payload_start +
+                                             ws_data->hdr.len);
             break;
     }
 
@@ -384,7 +389,8 @@ evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len) {
 
     /* uint16_t w = htons(*(uint16_t *)&ws_data->hdr); */
     memcpy((void *)res, &ws_data->hdr, sizeof(evhtp_ws_frame_hdr));
-    memcpy((void *)(res + sizeof(evhtp_ws_frame_hdr)), payload_start, (payload_end - payload_start));
+    memcpy((void *)(res + sizeof(evhtp_ws_frame_hdr)),
+           payload_start, (payload_end - payload_start));
 
     *out_len = sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start);
 
