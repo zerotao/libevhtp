@@ -119,14 +119,14 @@ static uint8_t _fext_len[129] = {
 
 
 #define MIN_READ(a, b)                    ((a) < (b) ? (a) : (b))
-#define HAS_MASKING_KEY_HDR(__frame)      ((__frame)->mask == 1)
 #define HAS_EXTENDED_PAYLOAD_HDR(__frame) ((__frame)->len >= 126)
 #define EXTENDED_PAYLOAD_HDR_LEN(__sz) \
     ((__sz >= 126) ? ((__sz == 126) ? 16 : 64) : 0)
 
 
 ssize_t
-evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks, const char * data, size_t len) {
+evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
+                    const char * data, size_t len) {
     uint8_t byte;
     char    c;
     size_t  i;
@@ -285,7 +285,8 @@ evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
     }
 
     memcpy(magic_w_ws_key, ws_key, ws_key_len);
-    memcpy((void *)(magic_w_ws_key + ws_key_len), EVHTP_WS_MAGIC, EVHTP_WS_MAGIC_SZ);
+    memcpy((void *)(magic_w_ws_key + ws_key_len),
+           EVHTP_WS_MAGIC, EVHTP_WS_MAGIC_SZ);
 
     sha1_init(&sha);
     sha1_update(&sha, magic_w_ws_key, magic_w_ws_key_len);
@@ -383,11 +384,11 @@ evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len) {
     }
 
 
-    if (!(res = calloc(sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start), 1))) {
+    if (!(res = calloc(sizeof(evhtp_ws_frame_hdr) +
+                       (payload_end - payload_start), 1))) {
         return NULL;
     }
 
-    /* uint16_t w = htons(*(uint16_t *)&ws_data->hdr); */
     memcpy((void *)res, &ws_data->hdr, sizeof(evhtp_ws_frame_hdr));
     memcpy((void *)(res + sizeof(evhtp_ws_frame_hdr)),
            payload_start, (payload_end - payload_start));
