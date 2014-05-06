@@ -1,5 +1,7 @@
 /*
- * THIS CODE IS BASED OFF OF THE FOLLOWING WORK / LICENSE:
+ * Thanks to Marcin Kelar for his code which I referenced as a starting point
+ * for the websockets interface, his license is as follows. Changes have been
+ * quite drastic, but he still needs mad propz.
  *
  * The MIT License (MIT)
  *
@@ -66,12 +68,11 @@ struct evhtp_ws_frame_hdr_s {
 
     uint8_t mask : 1,
             len  : 7;
-};
+} __attribute__ ((__packed__));
 
 struct evhtp_ws_data_s {
     evhtp_ws_frame_hdr hdr;
-
-    char payload[];
+    char               payload[0];
 };
 
 struct evhtp_ws_frame_s {
@@ -101,12 +102,6 @@ struct evhtp_ws_parser_s {
     uint64_t              orig_content_len;
 };
 
-#define MIN_READ(a, b)                    ((a) < (b) ? (a) : (b))
-#define HAS_MASKING_KEY_HDR(__frame)      ((__frame)->mask == 1)
-#define HAS_EXTENDED_PAYLOAD_HDR(__frame) ((__frame)->len >= 126)
-#define EXTENDED_PAYLOAD_HDR_LEN(__frame) \
-    (((__frame)->len >= 126) ? (((__frame)->len == 126) ? 16 : 64) : 0)
-
 static uint8_t _fext_len[129] = {
     [0]   = 0,
     [126] = 2,
@@ -114,13 +109,26 @@ static uint8_t _fext_len[129] = {
 };
 
 
+#define MIN_READ(a, b)                    ((a) < (b) ? (a) : (b))
+#define HAS_MASKING_KEY_HDR(__frame)      ((__frame)->mask == 1)
+#define HAS_EXTENDED_PAYLOAD_HDR(__frame) ((__frame)->len >= 126)
+#define EXTENDED_PAYLOAD_HDR_LEN(__sz) \
+    ((__sz >= 126) ? ((__sz == 126) ? 16 : 64) : 0)
+
+
 ssize_t
-evhtp_ws_parser_run(evhtp_ws_parser * p, const char * data, size_t len) {
+evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks, const char * data, size_t len) {
     uint8_t byte;
     char    c;
     size_t  i;
 
+    if (!hooks) {
+        return (ssize_t)len;
+    }
+
     for (i = 0; i < len; i++) {
+        int res;
+
         byte = (uint8_t)data[i];
 
         switch (p->state) {
@@ -130,19 +138,26 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, const char * data, size_t len) {
                 p->state            = ws_s_fin_rsv_opcode;
                 p->content_len      = 0;
                 p->orig_content_len = 0;
+
+                if (hooks->on_msg_begin) {
+                    if ((hooks->on_msg_begin)(p)) {
+                        return i;
+                    }
+                }
+
             /* fall-through */
             case ws_s_fin_rsv_opcode:
                 p->frame.hdr.fin    = (byte & 0x1);
                 p->frame.hdr.opcode = (byte & 0xF);
 
-                p->state            = ws_s_mask_payload_len;
+                p->state          = ws_s_mask_payload_len;
                 break;
             case ws_s_mask_payload_len:
 
-                p->frame.hdr.mask   = (byte & 0x1);
-                p->frame.hdr.len    = (byte & 0x7F);
+                p->frame.hdr.mask = (byte & 0x1);
+                p->frame.hdr.len  = (byte >> 1);
 
-                switch (EXTENDED_PAYLOAD_HDR_LEN(&p->frame.hdr)) {
+                switch (EXTENDED_PAYLOAD_HDR_LEN(p->frame.hdr.len)) {
                     case 0:
                         p->frame.payload_len = p->frame.hdr.len;
                         p->content_len       = p->frame.payload_len;
@@ -160,6 +175,8 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, const char * data, size_t len) {
                     case 64:
                         p->state = ws_s_ext_payload_len_64;
                         break;
+                    default:
+                        return -1;
                 } /* switch */
 
                 break;
@@ -175,7 +192,8 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, const char * data, size_t len) {
                     p->state = ws_s_masking_key;
                 }
 
-                i       += 2;
+                /* we only increment 1 instead of 2 since this byte counts as 1 */
+                i       += 1;
                 p->state = ws_s_payload;
 
                 break;
@@ -187,27 +205,37 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, const char * data, size_t len) {
                 p->frame.payload_len = *(uint64_t *)&data[i];
                 p->content_len       = p->frame.payload_len;
 
-                i       += 8;
+                /* we only increment by 7, since this byte counts as 1 (total 8
+                 * bytes.
+                 */
+                i       += 7;
                 p->state = ws_s_payload;
                 break;
             case ws_s_payload:
             {
                 const char * pp      = &data[i];
                 const char * pe      = (const char *)(data + len);
-                size_t       to_read = MIN_READ(pe - pp, p->content_len);
+                uint64_t     to_read = MIN_READ(pe - pp, p->content_len);
 
                 if (to_read > 0) {
-                    /* printf("hook_body_run() %zu\n", to_read); */
+                    if (hooks->on_msg_payload) {
+                        if ((hooks->on_msg_payload)(p, pp, to_read)) {
+                            return i;
+                        }
+                    }
 
                     p->content_len -= to_read;
-                    i += to_read - 1;
+                    i += to_read;
                 }
 
-                if (to_read == p->content_len) {
-                    if (p->content_len == 0) {
-                        /* printf("hook_on_msg_complete_run()\n"); */
-                        p->state = ws_s_start;
+                if (p->content_len == 0) {
+                    if (hooks->on_msg_complete) {
+                        if ((hooks->on_msg_complete)(p)) {
+                            return i;
+                        }
                     }
+
+                    p->state = ws_s_start;
                 }
             }
             break;
@@ -288,60 +316,104 @@ evhtp_ws_data_new(const char * data, size_t len) {
         frame_len = 127;
     }
 
-    ws_data              = calloc(sizeof(evhtp_ws_data) + len + _fext_len[frame_len], 1);
-    ws_data->hdr.len     = frame_len;
+    extra_bytes          = _fext_len[frame_len];
+
+    size_t l = sizeof(evhtp_ws_data) + len + extra_bytes;
+
+    ws_data              = calloc(l, 1);
+    ws_data->hdr.len     = frame_len ? frame_len : len;
     ws_data->hdr.fin     = 1;
     ws_data->hdr.opcode |= OP_TEXT;
 
     if (frame_len) {
-        memcpy(ws_data->payload, &len, _fext_len[frame_len]);
+        memcpy(ws_data->payload, &len, extra_bytes);
     }
 
-    memcpy((char *)(ws_data->payload + _fext_len[frame_len]), data, len);
+    memcpy((char *)(ws_data->payload + extra_bytes), data, len);
 
     return ws_data;
 }
 
 EXPORT_SYMBOL(evhtp_ws_data_new);
 
+void
+evhtp_ws_data_free(evhtp_ws_data * ws_data) {
+    return free(ws_data);
+}
+
+EXPORT_SYMBOL(evhtp_ws_data_free);
+
 unsigned char *
 evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len) {
-    unsigned char * payload_start = NULL;
-    unsigned char * payload_end   = NULL;
+    unsigned char * payload_start;
+    unsigned char * payload_end;
     unsigned char * res;
+    uint8_t         ext_len;
 
     if (!ws_data) {
         return NULL;
     }
 
+#if 0
+    if (ws_data->hdr.len < 126) {
+        payload_start = ws_data->payload;
+    } else {
+        payload_start = (unsigned char *)(ws_data->payload + _fext_len[ws_data->hdr.len]);
+    }
+#endif
+    payload_start = (unsigned char *)(ws_data->payload);
+
     switch (ws_data->hdr.len) {
-        case 0:
-            payload_start = ws_data->payload;
-            payload_end   = (unsigned char *)payload_start + ws_data->hdr.len;
-            break;
         case 126:
-            payload_start = (unsigned char *)(ws_data->payload + 2);
-            payload_end   = (unsigned char *)(payload_start + *(uint16_t *)ws_data->payload);
+            payload_end  = (unsigned char *)(payload_start + *(uint16_t *)ws_data->payload);
+            payload_end += 2;
             break;
         case 127:
-            payload_start = (unsigned char *)(ws_data->payload + 8);
-            payload_end   = (unsigned char *)(payload_start + *(uint64_t *)ws_data->payload);
+            payload_end  = (unsigned char *)(payload_start + *(uint64_t *)ws_data->payload);
+            payload_end += 8;
+            break;
+        default:
+            payload_end  = (unsigned char *)(payload_start + ws_data->hdr.len);
             break;
     }
 
 
-    res = malloc(sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start));
+    if (!(res = calloc(sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start), 1))) {
+        return NULL;
+    }
 
+    /* uint16_t w = htons(*(uint16_t *)&ws_data->hdr); */
     memcpy((void *)res, &ws_data->hdr, sizeof(evhtp_ws_frame_hdr));
-    memcpy((void *)(res + sizeof(evhtp_ws_frame_hdr)), payload_start,
-           (payload_end - payload_start));
+    memcpy((void *)(res + sizeof(evhtp_ws_frame_hdr)), payload_start, (payload_end - payload_start));
 
     *out_len = sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start);
 
     return res;
-}
+} /* evhtp_ws_data_pack */
 
 EXPORT_SYMBOL(evhtp_ws_data_pack);
+
+unsigned char *
+evhtp_ws_pack(const char * data, size_t len, size_t * out_len) {
+    evhtp_ws_data * w_data;
+    unsigned char * res;
+
+    if (!data || !len) {
+        return NULL;
+    }
+
+    if (!(w_data = evhtp_ws_data_new(data, len))) {
+        return NULL;
+    }
+
+    res = evhtp_ws_data_pack(w_data, out_len);
+
+    evhtp_ws_data_free(w_data);
+
+    return res;
+}
+
+EXPORT_SYMBOL(evhtp_ws_pack);
 
 evhtp_ws_parser *
 evhtp_ws_parser_new(void) {
@@ -350,403 +422,3 @@ evhtp_ws_parser_new(void) {
 
 EXPORT_SYMBOL(evhtp_ws_parser_new);
 
-#if 0
-/*
- * int evhtp_websocket_get_content( const char *data, int data_length, unsigned char *dst )
- * @data - entire data received with socket
- * @data_length - size of @data
- * @dst - pointer to char array, where the result will be stored
- * @return - size of @dst */
-int
-evhtp_websocket_get_content( const char *data, int data_length, unsigned char *dst, const unsigned int dst_len ) {
-    unsigned int  i, j;
-    unsigned char mask[4];
-    unsigned int  packet_length         = 0;
-    unsigned int  length_code           = 0;
-    int           index_first_mask      = 0;
-    int           index_first_data_byte = 0;
-
-    if ( ( unsigned char )data[0] != 129 ) {
-        dst = NULL;
-        if ( ( unsigned char )data[0] == 136 ) {
-            /* WebSocket client disconnected */
-            return -2;
-        }
-        /* Unknown error */
-        return -1;
-    }
-
-    length_code = ((unsigned char)data[1]) & 127;
-
-    if ( length_code <= 125 ) {
-        index_first_mask = 2;
-
-        mask[0]          = data[2];
-        mask[1]          = data[3];
-        mask[2]          = data[4];
-        mask[3]          = data[5];
-    } else if ( length_code == 126 ) {
-        index_first_mask = 4;
-
-        mask[0]          = data[4];
-        mask[1]          = data[5];
-        mask[2]          = data[6];
-        mask[3]          = data[7];
-    } else if ( length_code == 127 ) {
-        index_first_mask = 10;
-
-        mask[0]          = data[10];
-        mask[1]          = data[11];
-        mask[2]          = data[12];
-        mask[3]          = data[13];
-    }
-
-    index_first_data_byte = index_first_mask + 4;
-
-    packet_length         = data_length - index_first_data_byte;
-
-    for ( i = index_first_data_byte, j = 0; i < data_length; i++, j++ ) {
-        dst[ j ] = ( unsigned char )data[ i ] ^ mask[ j % 4];
-    }
-
-    return packet_length;
-} /* evhtp_websocket_get_content */
-
-/*
- * short evhtp_websocket_valid_connection( const char *data )
- * @data - entire data received with socket
- * @return - 0 = false / 1 = true */
-short
-evhtp_websocket_valid_connection( const char *data ) {
-    char *connection_header = ( char * )malloc( 64 * sizeof( char ) );
-    short result = 0;
-
-    request_get_header_value( data, "Connection:", connection_header, 64 );
-
-    if ( connection_header == NULL ) {
-        return 0;
-    }
-
-    result = ( strstr( data, evhtp_websocket_KEY_HEADER ) != NULL && ( strstr( connection_header, "Upgrade" ) != NULL || strstr( connection_header, "upgrade" ) != NULL) );
-
-    if ( connection_header ) {
-        free( connection_header );
-        connection_header = NULL;
-    }
-
-    return result;
-}
-
-/*
- * int evhtp_websocket_client_version( const char *data )
- * @data - entire data received with socket
- * @return - value from client's Sec-WebSocket-Version key */
-int
-evhtp_websocket_client_version( const char *data ) {
-    char *version_header = ( char * )malloc( 32 * sizeof( char ) );
-    int   result;
-
-    request_get_header_value( data, "Sec-WebSocket-Version:", version_header, 32 );
-
-    if ( version_header == NULL ) {
-        return -1;
-    }
-
-    result = atoi( version_header );
-
-    if ( version_header ) {
-        free( version_header );
-        version_header = NULL;
-    }
-
-    return result;
-}
-
-#include <string.h>
-#include <stdint.h>
-#include <errno.h>
-#include <assert.h>
-
-/*******************************************************************
-*
-*  WebSocket Protocol Implementation
-*
-+ WebSocket versions:
-+       - 13
-+ Dependencies:
-+       - sha1.h and sha1.c from http://www.packetizer.com/security/sha1/ (included)
-+       - base64.h and base64.c (included)
-+ Known bugs:
-+       - evhtp_websocket_generate_handshake: sha.Message_Digest[i] => sha1_part fails if leading zero is found
-+
-+  Author: Marcin Kelar ( marcin.kelar@gmail.com )
-*******************************************************************/
-#include <stdio.h>
-#include "include/cWebSockets.h"
-
-/*
- * void request_get_header_value( const char *data, const char *requested_key )
- * @data - entire data received with socket
- * @requested_key - requested key
- * @dst - pointer to char array where the result will be stored,
- * @dst_len - size of @dst */
-void
-request_get_header_value( const char *data, const char *requested_key, char *dst, unsigned int dst_len ) {
-    char *src = ( char * )malloc( 65535 * sizeof( char ) );
-    char *result_handler;
-    char *result;
-    char *tmp_header_key;
-    int   i   = 0;
-
-    strncpy( src, data, 65535 );
-
-    tmp_header_key = strstr( ( char * )src, requested_key );
-    if ( tmp_header_key == NULL ) {
-        dst = NULL;
-        return;
-    }
-
-    result_handler = ( char * )malloc( 1024 * sizeof( char ) );
-    result         = ( char * )calloc( 256, sizeof( char ) );
-
-    strncpy( result_handler, tmp_header_key, 1024 );
-    tmp_header_key = NULL;
-
-    while ( ( result[ i ] = result_handler[ i ] ) != '\015' ) {
-        if ( result_handler[ i ] != '\015' ) {
-            i++;
-        }
-    }
-    result[ i ]    = '\0';
-
-    free( result_handler );
-    result_handler = NULL;
-
-    strncpy( dst, strstr( result, ": " ) + 2, dst_len );
-    free( src );
-    src    = NULL;
-    free( result );
-    result = NULL;
-}
-
-/*
- * void evhtp_websocket_generate_handshake( const char *data, char *dst, unsigned int dst_len )
- * @data - entire data received with socket
- * @dst - pointer to char array where the result will be stored
- * @dst_len - size of @dst */
-void
-evhtp_websocket_generate_handshake( const char *data, char *dst, const unsigned int dst_len ) {
-    char          origin[ 512 ];
-    char          host[ 512 ];
-    char          additional_headers[ 2048 ];
-    char          sec_websocket_key[ 512 ];
-    char          sec_websocket_key_sha1[ 512 ];
-    char          sha1_part[ 32 ];
-    SHA1Context   sha;
-    unsigned char sha1_hex[ 512 ];
-    unsigned char sha1_tmp[ 512 ];
-    unsigned char sec_websocket_accept[ 512 ];
-    int           source_len;
-    int           i;
-
-    memset( sha1_hex, '\0', 512 );
-    memset( sha1_tmp, '\0', 32 );
-    memset( sec_websocket_accept, '\0', 512 );
-
-    request_get_header_value( data, "Origin:", origin, 512 );
-    request_get_header_value( data, "Host:", host, 512 );
-
-    if ( origin != NULL && host != NULL ) {
-        sprintf( additional_headers, "Origin: %s\r\nHost: %s", origin, host );
-    } else {
-        sprintf( additional_headers, "Origin: %s\r\nHost: %s", "null", "null" );
-    }
-
-    request_get_header_value(data, evhtp_websocket_KEY_HEADER, sec_websocket_key, 512 );
-    if ( sec_websocket_key == NULL ) {
-        dst = NULL;
-        return;
-    }
-
-    strncat( sec_websocket_key, evhtp_websocket_MAGIC_STRING, 512 );
-
-    SHA1Reset( &sha );
-    SHA1Input( &sha, ( const unsigned char * )sec_websocket_key, strlen( sec_websocket_key ) );
-    SHA1Result( &sha );
-
-    for ( i = 0; i < 5; i++ ) {
-        snprintf( sha1_part, 32, "%x", sha.Message_Digest[i] );
-        strncat( sha1_tmp, sha1_part, 512 );
-    }
-
-    strncpy( sec_websocket_key_sha1, sha1_tmp, 512 );
-    source_len = xstr2str( sha1_hex, 512, sec_websocket_key_sha1 );
-    base64_encode( sha1_hex, source_len - 1, sec_websocket_accept, 512 );
-
-    snprintf( dst, dst_len, evhtp_websocket_HANDSHAKE_RESPONSE, additional_headers, sec_websocket_accept );
-}     /* evhtp_websocket_generate_handshake */
-
-/*
- * int evhtp_websocket_set_content( const char *data, int data_length, unsigned char *dst )
- * @data - entire data received with socket
- * @data_length - size of @data
- * @dst - pointer to char array where the result will be stored
- * @dst_len - size of @dst
- * @return - WebSocket frame size */
-int
-evhtp_websocket_set_content( const char *data, int data_length, unsigned char *dst, const unsigned int dst_len ) {
-    unsigned char *message = ( unsigned char * )malloc( 65535 * sizeof( char ) );
-    int            i;
-    int            data_start_index;
-
-    message[0] = 129;
-
-    if ( data_length <= 125 ) {
-        message[1]       = ( unsigned char )data_length;
-        data_start_index = 2;
-    } else if ( data_length > 125 && data_length <= 65535 ) {
-        message[1]       = 126;
-        message[2]       = ( unsigned char )( ( data_length >> 8 ) & 255 );
-        message[3]       = ( unsigned char )( ( data_length ) & 255 );
-        data_start_index = 4;
-    } else {
-        message[1]       = 127;
-        message[2]       = ( unsigned char )( ( data_length >> 56 ) & 255 );
-        message[3]       = ( unsigned char )( ( data_length >> 48 ) & 255 );
-        message[4]       = ( unsigned char )( ( data_length >> 40 ) & 255 );
-        message[5]       = ( unsigned char )( ( data_length >> 32 ) & 255 );
-        message[6]       = ( unsigned char )( ( data_length >> 24 ) & 255 );
-        message[7]       = ( unsigned char )( ( data_length >> 16 ) & 255 );
-        message[8]       = ( unsigned char )( ( data_length >> 8 ) & 255 );
-        message[9]       = ( unsigned char )( ( data_length ) & 255 );
-        data_start_index = 10;
-    }
-
-    for ( i = 0; i < data_length; i++ ) {
-        message[ data_start_index + i ] = ( unsigned char )data[i];
-    }
-
-    for ( i = 0; i < data_length + data_start_index; i++ ) {
-        dst[i] = ( unsigned char )message[ i ];
-    }
-
-    if ( message ) {
-        free( message );
-        message = NULL;
-    }
-
-    return i;
-}     /* evhtp_websocket_set_content */
-
-/*
- * int evhtp_websocket_get_content( const char *data, int data_length, unsigned char *dst )
- * @data - entire data received with socket
- * @data_length - size of @data
- * @dst - pointer to char array, where the result will be stored
- * @return - size of @dst */
-int
-evhtp_websocket_get_content( const char *data, int data_length, unsigned char *dst, const unsigned int dst_len ) {
-    unsigned int  i, j;
-    unsigned char mask[4];
-    unsigned int  packet_length         = 0;
-    unsigned int  length_code           = 0;
-    int           index_first_mask      = 0;
-    int           index_first_data_byte = 0;
-
-    if ( ( unsigned char )data[0] != 129 ) {
-        dst = NULL;
-        if ( ( unsigned char )data[0] == 136 ) {
-            /* WebSocket client disconnected */
-            return -2;
-        }
-        /* Unknown error */
-        return -1;
-    }
-
-    length_code = ((unsigned char)data[1]) & 127;
-
-    if ( length_code <= 125 ) {
-        index_first_mask = 2;
-
-        mask[0]          = data[2];
-        mask[1]          = data[3];
-        mask[2]          = data[4];
-        mask[3]          = data[5];
-    } else if ( length_code == 126 ) {
-        index_first_mask = 4;
-
-        mask[0]          = data[4];
-        mask[1]          = data[5];
-        mask[2]          = data[6];
-        mask[3]          = data[7];
-    } else if ( length_code == 127 ) {
-        index_first_mask = 10;
-
-        mask[0]          = data[10];
-        mask[1]          = data[11];
-        mask[2]          = data[12];
-        mask[3]          = data[13];
-    }
-
-    index_first_data_byte = index_first_mask + 4;
-
-    packet_length         = data_length - index_first_data_byte;
-
-    for ( i = index_first_data_byte, j = 0; i < data_length; i++, j++ ) {
-        dst[ j ] = ( unsigned char )data[ i ] ^ mask[ j % 4];
-    }
-
-    return packet_length;
-}     /* evhtp_websocket_get_content */
-
-/*
- * short evhtp_websocket_valid_connection( const char *data )
- * @data - entire data received with socket
- * @return - 0 = false / 1 = true */
-short
-evhtp_websocket_valid_connection( const char *data ) {
-    char *connection_header = ( char * )malloc( 64 * sizeof( char ) );
-    short result = 0;
-
-    request_get_header_value( data, "Connection:", connection_header, 64 );
-
-    if ( connection_header == NULL ) {
-        return 0;
-    }
-
-    result = ( strstr( data, evhtp_websocket_KEY_HEADER ) != NULL && ( strstr( connection_header, "Upgrade" ) != NULL || strstr( connection_header, "upgrade" ) != NULL) );
-
-    if ( connection_header ) {
-        free( connection_header );
-        connection_header = NULL;
-    }
-
-    return result;
-}
-
-/*
- * int evhtp_websocket_client_version( const char *data )
- * @data - entire data received with socket
- * @return - value from client's Sec-WebSocket-Version key */
-int
-evhtp_websocket_client_version( const char *data ) {
-    char *version_header = ( char * )malloc( 32 * sizeof( char ) );
-    int   result;
-
-    request_get_header_value( data, "Sec-WebSocket-Version:", version_header, 32 );
-
-    if ( version_header == NULL ) {
-        return -1;
-    }
-
-    result = atoi( version_header );
-
-    if ( version_header ) {
-        free( version_header );
-        version_header = NULL;
-    }
-
-    return result;
-}
-
-#endif
