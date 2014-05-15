@@ -19,6 +19,7 @@
 #include <event2/event.h>
 #include <event2/thread.h>
 
+#include "evhtp2/evhtp-internal.h"
 #include "evhtp2/internal.h"
 #include "evhtp2/evhtp_thr.h"
 
@@ -392,3 +393,31 @@ EXPORT_SYMBOL(evhtp_thr_pool_start);
 EXPORT_SYMBOL(evhtp_thr_pool_stop);
 EXPORT_SYMBOL(evhtp_thr_pool_defer);
 EXPORT_SYMBOL(evhtp_thr_pool_free);
+
+static void
+_evhtp_thread_init(evhtp_thr_t * thr, void * arg) {
+    evhtp_t * htp = (evhtp_t *)arg;
+
+    if (htp->thread_init_cb) {
+        htp->thread_init_cb(htp, thr, htp->thread_init_cbarg);
+    }
+}
+
+int
+evhtp_use_threads(evhtp_t * htp, evhtp_thread_init_cb init_cb, int nthreads, void * arg) {
+    htp->thread_init_cb    = init_cb;
+    htp->thread_init_cbarg = arg;
+
+#ifdef EVHTP_ENABLE_SSL
+    evhtp_ssl_use_threads();
+#endif
+
+    if (!(htp->thr_pool = evhtp_thr_pool_new(nthreads, _evhtp_thread_init, htp))) {
+        return -1;
+    }
+
+    evhtp_thr_pool_start(htp->thr_pool);
+    return 0;
+}
+
+EXPORT_SYMBOL(evhtp_use_threads);

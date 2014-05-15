@@ -13,10 +13,6 @@ extern "C" {
 #include <evhtp2/evhtp-config.h>
 #include <evhtp2/evhtp_parser.h>
 
-#ifdef EVHTP_ENABLE_EVTHR
-#include <evhtp2/evhtp_thr.h>
-#endif
-
 #define EVHTP_RES_ERROR         0
 #define EVHTP_RES_PAUSE         1
 #define EVHTP_RES_FATAL         2
@@ -170,9 +166,6 @@ typedef enum evhtp_proto         evhtp_proto;
 typedef uint16_t                 evhtp_res;
 typedef uint8_t                  evhtp_error_flags;
 
-#ifdef EVHTP_ENABLE_EVTHR
-typedef void (*evhtp_thread_init_cb)(evhtp_t * htp, evhtp_thr_t * thr, void * arg);
-#endif
 typedef void (*evhtp_callback_cb)(evhtp_req_t * req, void * arg);
 typedef void (*evhtp_hook_err_cb)(evhtp_req_t * req, evhtp_error_flags errtype, void * arg);
 
@@ -770,10 +763,6 @@ EVHTP_PATH_GET_FN(match_start, const char *);
 EVHTP_PATH_GET_FN(match_end, const char *);
 EVHTP_PATH_GET_FN(matched_soff, unsigned int);
 EVHTP_PATH_GET_FN(matched_eoff, unsigned int);
-
-#ifdef EVHTP_ENABLE_EVTHR
-int evhtp_use_threads(evhtp_t * htp, evhtp_thread_init_cb init_cb, int nthreads, void * arg);
-#endif
 
 /*****************************************************************
 * client req functions                                      *

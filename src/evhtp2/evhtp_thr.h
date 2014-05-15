@@ -34,6 +34,7 @@ typedef enum evhtp_thr_res    evhtp_thr_res;
 
 typedef void (*evhtp_thr_cb)(evhtp_thr_t * thr, void * cmd_arg, void * shared);
 typedef void (*evhtp_thr_init_cb)(evhtp_thr_t * thr, void * shared);
+typedef void (*evhtp_thread_init_cb)(evhtp_t * htp, evhtp_thr_t * thr, void * arg);
 
 evhtp_thr_t       * evhtp_thr_new(evhtp_thr_init_cb init_cb, void * arg);
 struct event_base * evhtp_thr_get_base(evhtp_thr_t * thr);
@@ -49,6 +50,8 @@ int                 evhtp_thr_pool_start(evhtp_thr_pool_t * pool);
 evhtp_thr_res       evhtp_thr_pool_stop(evhtp_thr_pool_t * pool);
 evhtp_thr_res       evhtp_thr_pool_defer(evhtp_thr_pool_t * pool, evhtp_thr_cb cb, void * arg);
 void                evhtp_thr_pool_free(evhtp_thr_pool_t * pool);
+
+int                 evhtp_use_threads(evhtp_t * htp, evhtp_thread_init_cb init_cb, int nthreads, void * arg);
 
 #ifdef __cplusplus
 }
