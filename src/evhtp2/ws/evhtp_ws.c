@@ -109,6 +109,7 @@ struct evhtp_ws_parser_s {
     evhtp_ws_parser_state state;
     uint64_t              content_len;
     uint64_t              orig_content_len;
+    uint64_t              content_idx;
 };
 
 static uint8_t _fext_len[129] = {
@@ -123,6 +124,17 @@ static uint8_t _fext_len[129] = {
 #define EXTENDED_PAYLOAD_HDR_LEN(__sz) \
     ((__sz >= 126) ? ((__sz == 126) ? 16 : 64) : 0)
 
+
+static uint32_t __MASK[] = {
+    0x000000ff,
+    0x0000ff00,
+    0x00ff0000,
+    0xff000000
+};
+
+static uint32_t __SHIFT[] = {
+    0, 8, 16, 24
+};
 
 ssize_t
 evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
@@ -147,6 +159,7 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 p->state            = ws_s_fin_rsv_opcode;
                 p->content_len      = 0;
                 p->orig_content_len = 0;
+                p->content_idx      = 0;
 
                 if (hooks->on_msg_begin) {
                     if ((hooks->on_msg_begin)(p)) {
@@ -159,17 +172,18 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 p->frame.hdr.fin    = (byte & 0x1);
                 p->frame.hdr.opcode = (byte & 0xF);
 
-                p->state          = ws_s_mask_payload_len;
+                p->state = ws_s_mask_payload_len;
                 break;
             case ws_s_mask_payload_len:
-
-                p->frame.hdr.mask = (byte & 0x1);
-                p->frame.hdr.len  = (byte >> 1);
+                p->frame.hdr.mask   = ((byte & 0x80) ? 1 : 0);
+                p->frame.hdr.len    = (byte & 0x7F);
 
                 switch (EXTENDED_PAYLOAD_HDR_LEN(p->frame.hdr.len)) {
                     case 0:
                         p->frame.payload_len = p->frame.hdr.len;
                         p->content_len       = p->frame.payload_len;
+                        p->orig_content_len  = p->content_len;
+
 
                         if (p->frame.hdr.mask == 1) {
                             p->state = ws_s_masking_key;
@@ -196,6 +210,7 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
 
                 p->frame.payload_len = *(uint16_t *)&data[i];
                 p->content_len       = p->frame.payload_len;
+                p->orig_content_len  = p->content_len;
 
                 if (p->frame.hdr.mask == 1) {
                     p->state = ws_s_masking_key;
@@ -214,10 +229,21 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 p->frame.payload_len = *(uint64_t *)&data[i];
                 p->content_len       = p->frame.payload_len;
 
+                p->orig_content_len  = p->content_len;
                 /* we only increment by 7, since this byte counts as 1 (total 8
                  * bytes.
                  */
                 i       += 7;
+                p->state = ws_s_payload;
+                break;
+            case ws_s_masking_key:
+                if (MIN_READ((const char *)(data + len) - &data[i], 4) < 4) {
+                    return i;
+                }
+
+                p->frame.masking_key = *(uint32_t *)&data[i];
+                i       += 3;
+
                 p->state = ws_s_payload;
                 break;
             case ws_s_payload:
@@ -227,8 +253,21 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 uint64_t     to_read = MIN_READ(pe - pp, p->content_len);
 
                 if (to_read > 0) {
+                    int  z;
+                    char buf[to_read];
+
+                    for (z = 0; z < to_read; z++) {
+                        int           j = p->content_idx % 4;
+                        unsigned char xformed_oct;
+
+                        xformed_oct     = (p->frame.masking_key & __MASK[j]) >> __SHIFT[j];
+                        buf[z]          = (unsigned char)pp[z] ^ xformed_oct;
+
+                        p->content_idx += 1;
+                    }
+
                     if (hooks->on_msg_payload) {
-                        if ((hooks->on_msg_payload)(p, pp, to_read)) {
+                        if ((hooks->on_msg_payload)(p, buf, to_read)) {
                             return i;
                         }
                     }
@@ -257,6 +296,7 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
 int
 evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
     const char * ws_key;
+    const char * upgrade;
     char       * magic_w_ws_key;
     size_t       magic_w_ws_key_len;
     size_t       ws_key_len;
@@ -264,7 +304,6 @@ evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
     char       * out        = NULL;
     size_t       out_bytes  = 0;
     char         digest[20] = { 0 };
-    char         sha1[42]   = { 0 };
 
     if (!hdrs_in || !hdrs_out) {
         return -1;
@@ -289,12 +328,11 @@ evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
            EVHTP_WS_MAGIC, EVHTP_WS_MAGIC_SZ);
 
     sha1_init(&sha);
-    sha1_update(&sha, magic_w_ws_key, magic_w_ws_key_len);
+    sha1_update(&sha, magic_w_ws_key, magic_w_ws_key_len - 1);
     sha1_finalize(&sha, digest);
-    sha1_tostr(digest, sha1);
 
-    if (base_encode(base64_rfc, magic_w_ws_key,
-                    magic_w_ws_key_len, (void **)&out, &out_bytes) == -1) {
+    if (base_encode(base64_rfc, digest,
+                    20, (void **)&out, &out_bytes) == -1) {
         free(magic_w_ws_key);
         return -1;
     }
@@ -307,6 +345,13 @@ evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
 
     free(magic_w_ws_key);
 
+    if ((upgrade = evhtp_kv_find(hdrs_in, "Upgrade"))) {
+        evhtp_kvs_add_kv(hdrs_out,
+                         evhtp_kv_new("Upgrade", upgrade, 1, 1));
+    }
+
+    evhtp_kvs_add_kv(hdrs_out,
+                     evhtp_kv_new("Connection", "Upgrade", 1, 1));
     return 0;
 } /* evhtp_ws_gen_handshake */
 

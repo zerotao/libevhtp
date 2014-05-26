@@ -123,6 +123,9 @@ struct evhtp_req {
     uint8_t           finished  : 1;       /**< set to 1 if the req is fully processed */
     uint8_t           chunked   : 1;       /**< set to 1 if the req is chunked */
     uint8_t           error     : 1;
+#if 0
+    uint8_t ws : 1;
+#endif
 
     evhtp_callback_cb cb;                  /**< the function to call when fully processed */
     void            * cbarg;               /**< argument which is passed to the cb function */

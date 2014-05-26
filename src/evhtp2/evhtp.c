@@ -22,6 +22,7 @@
 #include <limits.h>
 
 #include "evhtp2/evhtp-internal.h"
+#include "evhtp2/ws/evhtp_ws.h"
 
 static int            _evhtp_req_parser_start(evhtp_parser * p);
 static int            _evhtp_req_parser_path(evhtp_parser * p, const char * data, size_t len);
@@ -245,6 +246,33 @@ static evhtp_parser_hooks req_psets = {
     .on_chunks_complete = _evhtp_req_parser_chunks_fini,
     .body               = _evhtp_req_parser_body,
     .on_msg_complete    = _evhtp_req_parser_fini
+};
+
+static int
+_ws_msg_begin(evhtp_ws_parser * p) {
+    printf("BEGIN!\n");
+
+    return 0;
+}
+
+static int
+_ws_msg_complete(evhtp_ws_parser * p) {
+    printf("COMPLETE!\n");
+
+    return 0;
+}
+
+static int
+_ws_msg_payload(evhtp_ws_parser * p, const char * d, size_t l) {
+    printf("Got %zu\n", l);
+
+    return 0;
+}
+
+static evhtp_ws_hooks ws_hooks = {
+    .on_msg_begin    = _ws_msg_begin,
+    .on_msg_payload  = _ws_msg_payload,
+    .on_msg_complete = _ws_msg_complete
 };
 
 /*
@@ -1155,22 +1183,45 @@ _evhtp_req_parser_headers(evhtp_parser * p) {
         return -1;
     }
 
-    if (c->type == evhtp_type_server && c->htp->disable_100_cont == 0) {
-        /* only send a 100 continue response if it hasn't been disabled via
-         * evhtp_disable_100_continue.
-         */
-        if (!evhtp_hdr_find(c->req->headers_in, "Expect")) {
-            return 0;
+    if (c->type == evhtp_type_server) {
+        const char * connection;
+
+        if (c->htp->disable_100_cont == 0) {
+            /* only send a 100 continue response if it hasn't been disabled via
+             * evhtp_disable_100_continue.
+             */
+            if (evhtp_hdr_find(c->req->headers_in, "Expect")) {
+                evbuffer_add_printf(bufferevent_get_output(c->bev),
+                                    "HTTP/%d.%d 100 Continue\r\n\r\n",
+                                    evhtp_parser_get_major(p),
+                                    evhtp_parser_get_minor(p));
+            }
         }
 
-        evbuffer_add_printf(bufferevent_get_output(c->bev),
-                            "HTTP/%d.%d 100 Continue\r\n\r\n",
-                            evhtp_parser_get_major(p),
-                            evhtp_parser_get_minor(p));
+#if 0
+        if ((connection = evhtp_hdr_find(c->req->headers_in, "Connection"))) {
+            if (!strcmp(connection, "Upgrade")) {
+                int res;
+
+                res = evhtp_ws_gen_handshake(
+                    c->req->headers_in,
+                    c->req->headers_out);
+
+                if (res == -1) {
+                    return -1;
+                }
+
+                c->req->ws = 1;
+
+                evhtp_send_reply_start(c->req, EVHTP_RES_SWITCH_PROTO);
+                return 0;
+            }
+        }
+#endif
     }
 
     return 0;
-}
+} /* _evhtp_req_parser_headers */
 
 static int
 _evhtp_req_parser_body(evhtp_parser * p, const char * data, size_t len) {
@@ -1506,6 +1557,16 @@ _evhtp_conn_readcb(struct bufferevent * bev, void * arg) {
     buf   = evbuffer_pullup(bufferevent_get_input(bev), avail);
 
     nread = evhtp_parser_run(c->parser, &req_psets, (const char *)buf, avail);
+#if 0
+    if (c->req && c->req->ws == 1) {
+        evhtp_ws_parser * wsp = evhtp_ws_parser_new();
+
+        nread = evhtp_ws_parser_run(wsp, &ws_hooks, buf, avail);
+        printf("Got %zu\n", nread);
+    } else {
+        nread = evhtp_parser_run(c->parser, &req_psets, (const char *)buf, avail);
+    }
+#endif
 
     if (c->owner != 1) {
         /*
