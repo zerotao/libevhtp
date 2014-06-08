@@ -77,7 +77,7 @@ struct evhtp_ws_frame_hdr_s {
 
     uint8_t mask : 1,
             len  : 7;
-} __attribute__ ((__packed__));
+};
 
 struct evhtp_ws_data_s {
     evhtp_ws_frame_hdr hdr;
@@ -110,6 +110,8 @@ struct evhtp_ws_parser_s {
     uint64_t              content_len;
     uint64_t              orig_content_len;
     uint64_t              content_idx;
+    uint16_t              status_code;
+    void                * usrdata;
 };
 
 static uint8_t _fext_len[129] = {
@@ -139,9 +141,12 @@ static uint32_t __SHIFT[] = {
 ssize_t
 evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                     const char * data, size_t len) {
-    uint8_t byte;
-    char    c;
-    size_t  i;
+    uint8_t      byte;
+    char         c;
+    size_t       i;
+    const char * p_start;
+    const char * p_end;
+    uint64_t     to_read;
 
     if (!hooks) {
         return (ssize_t)len;
@@ -161,8 +166,8 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 p->orig_content_len = 0;
                 p->content_idx      = 0;
 
-                if (hooks->on_msg_begin) {
-                    if ((hooks->on_msg_begin)(p)) {
+                if (hooks->on_msg_start) {
+                    if ((hooks->on_msg_start)(p)) {
                         return i;
                     }
                 }
@@ -212,12 +217,14 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 p->content_len       = p->frame.payload_len;
                 p->orig_content_len  = p->content_len;
 
+                /* we only increment 1 instead of 2 since this byte counts as 1 */
+                i += 1;
+
                 if (p->frame.hdr.mask == 1) {
                     p->state = ws_s_masking_key;
+                    break;
                 }
 
-                /* we only increment 1 instead of 2 since this byte counts as 1 */
-                i       += 1;
                 p->state = ws_s_payload;
 
                 break;
@@ -226,14 +233,21 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                     return i;
                 }
 
+
                 p->frame.payload_len = *(uint64_t *)&data[i];
                 p->content_len       = p->frame.payload_len;
-
                 p->orig_content_len  = p->content_len;
+
                 /* we only increment by 7, since this byte counts as 1 (total 8
                  * bytes.
                  */
-                i       += 7;
+                i += 7;
+
+                if (p->frame.hdr.mask == 1) {
+                    p->state = ws_s_masking_key;;
+                    break;
+                }
+
                 p->state = ws_s_payload;
                 break;
             case ws_s_masking_key:
@@ -247,10 +261,62 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 p->state = ws_s_payload;
                 break;
             case ws_s_payload:
-            {
-                const char * pp      = &data[i];
-                const char * pe      = (const char *)(data + len);
-                uint64_t     to_read = MIN_READ(pe - pp, p->content_len);
+                /* XXX we need to abstract out the masking shit here, so I don't
+                 * have a OP_CLOSE type mask function AND a normal data mask
+                 * function all in one case.
+                 */
+                if (p->frame.hdr.opcode == OP_CLOSE && p->status_code == 0) {
+                    uint64_t index;
+                    uint32_t mkey;
+                    int      j1;
+                    int      j2;
+                    int      m1;
+                    int      m2;
+                    char     buf[2];
+
+                    /* webosckes will even mask the 2 byte OP_CLOSE portion,
+                     * this is a bit hacky, I need to clean this up.
+                     */
+
+                    if (MIN_READ((const char *)(data + len) - &data[i], 2) < 2) {
+                        return i;
+                    }
+
+                    index           = p->content_idx;
+                    mkey            = p->frame.masking_key;
+
+                    /* our mod4 for the current index */
+                    j1              = index % 4;
+                    /* our mod4 for one past the index. */
+                    j2              = (index + 1) % 4;
+
+                    /* the masks we will be using to xor the buffers */
+                    m1              = (mkey & __MASK[j1]) >> __SHIFT[j1];
+                    m2              = (mkey & __MASK[j2]) >> __SHIFT[j2];
+
+                    buf[0]          = data[i] ^ m1;
+                    buf[1]          = data[i + 1] ^ m2;
+
+                    /* even though websockets doesn't do network byte order
+                     * anywhere else, for some reason, we do it here! NOW
+                     * AWESOME!
+                     */
+                    p->status_code  = ntohs(*(uint16_t *)buf);
+
+                    p->content_len -= 2;
+                    p->content_idx += 2;
+
+                    i += 1;
+
+                    /* RFC states that there could be a message after the
+                     * OP_CLOSE 2 byte header, so just drop down and attempt
+                     * to parse it.
+                     */
+                }
+
+                p_start = &data[i];
+                p_end   = (const char *)(data + len);
+                to_read = MIN_READ(p_end - p_start, p->content_len);
 
                 if (to_read > 0) {
                     int  z;
@@ -261,13 +327,13 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                         unsigned char xformed_oct;
 
                         xformed_oct     = (p->frame.masking_key & __MASK[j]) >> __SHIFT[j];
-                        buf[z]          = (unsigned char)pp[z] ^ xformed_oct;
+                        buf[z]          = (unsigned char)p_start[z] ^ xformed_oct;
 
                         p->content_idx += 1;
                     }
 
-                    if (hooks->on_msg_payload) {
-                        if ((hooks->on_msg_payload)(p, buf, to_read)) {
+                    if (hooks->on_msg_data) {
+                        if ((hooks->on_msg_data)(p, buf, to_read)) {
                             return i;
                         }
                     }
@@ -276,17 +342,17 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                     i += to_read - 1;
                 }
 
-                if (p->content_len == 0) {
-                    if (hooks->on_msg_complete) {
-                        if ((hooks->on_msg_complete)(p)) {
+                if (p->content_len == 0 && p->frame.hdr.fin == 1) {
+                    if (hooks->on_msg_fini) {
+                        if ((hooks->on_msg_fini)(p)) {
                             return i;
                         }
                     }
 
                     p->state = ws_s_start;
                 }
-            }
-            break;
+
+                break;
         } /* switch */
     }
 
@@ -357,6 +423,7 @@ evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
 
 EXPORT_SYMBOL(evhtp_ws_gen_handshake);
 
+#if 0
 evhtp_ws_data *
 evhtp_ws_data_new(const char * data, size_t len) {
     evhtp_ws_data * ws_data;
@@ -466,6 +533,7 @@ evhtp_ws_pack(const char * data, size_t len, size_t * out_len) {
 }
 
 EXPORT_SYMBOL(evhtp_ws_pack);
+#endif
 
 evhtp_ws_parser *
 evhtp_ws_parser_new(void) {
@@ -474,3 +542,20 @@ evhtp_ws_parser_new(void) {
 
 EXPORT_SYMBOL(evhtp_ws_parser_new);
 
+void
+evhtp_ws_parser_set_userdata(evhtp_ws_parser * p, void * usrdata) {
+    assert(p != NULL);
+
+    p->usrdata = usrdata;
+}
+
+EXPORT_SYMBOL(evhtp_ws_parser_set_userdata);
+
+void *
+evhtp_ws_parser_get_userdata(evhtp_ws_parser * p) {
+    assert(p != NULL);
+
+    return p->usrdata;
+}
+
+EXPORT_SYMBOL(evhtp_ws_parser_get_userdata);

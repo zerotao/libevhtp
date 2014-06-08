@@ -249,30 +249,45 @@ static evhtp_parser_hooks req_psets = {
 };
 
 static int
-_ws_msg_begin(evhtp_ws_parser * p) {
+_ws_msg_start(evhtp_ws_parser * p) {
+    evhtp_req_t * req;
+
+    req = evhtp_ws_parser_get_userdata(p);
+    assert(req != NULL);
+
     printf("BEGIN!\n");
 
     return 0;
 }
 
 static int
-_ws_msg_complete(evhtp_ws_parser * p) {
+_ws_msg_fini(evhtp_ws_parser * p) {
+    evhtp_req_t * req;
+
+    req = evhtp_ws_parser_get_userdata(p);
+    assert(req != NULL);
+
     printf("COMPLETE!\n");
 
     return 0;
 }
 
 static int
-_ws_msg_payload(evhtp_ws_parser * p, const char * d, size_t l) {
+_ws_msg_data(evhtp_ws_parser * p, const char * d, size_t l) {
+    evhtp_req_t * req;
+
+    req = evhtp_ws_parser_get_userdata(p);
+    assert(req != NULL);
+
     printf("Got %zu %.*s\n", l, (int)l, d);
 
     return 0;
 }
 
 static evhtp_ws_hooks ws_hooks = {
-    .on_msg_begin    = _ws_msg_begin,
-    .on_msg_payload  = _ws_msg_payload,
-    .on_msg_complete = _ws_msg_complete
+    .on_msg_start = _ws_msg_start,
+    .on_msg_data  = _ws_msg_data,
+    .on_msg_fini  = _ws_msg_fini
 };
 
 /*
@@ -1581,6 +1596,8 @@ _evhtp_conn_readcb(struct bufferevent * bev, void * arg) {
          */
         if (req->ws_parser == NULL) {
             req->ws_parser = evhtp_ws_parser_new();
+
+            evhtp_ws_parser_set_userdata(req->ws_parser, req);
         }
 
         assert(req->ws_parser != NULL);
