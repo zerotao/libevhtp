@@ -1351,6 +1351,13 @@ _evhtp_req_parser_fini(evhtp_parser * p) {
         return -1;
     }
 
+    if (c->req && c->req->websock) {
+        /* websockets have been set for this request, we don't want to do any
+         * further processing on it.
+         */
+        return 0;
+    }
+
     /* check to see if we should use the body of the req as the query
      * arguments.
      */
@@ -1614,7 +1621,6 @@ _evhtp_conn_readcb(struct bufferevent * bev, void * arg) {
 
     evbuffer_drain(bufferevent_get_input(bev), nread);
 
-    printf("%zu %zu\n", avail, nread);
     if (req && req->status == EVHTP_RES_PAUSE) {
         evhtp_req_pause(req);
     } else if (avail != nread) {
