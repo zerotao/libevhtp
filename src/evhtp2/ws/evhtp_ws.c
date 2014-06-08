@@ -165,6 +165,7 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 p->content_len      = 0;
                 p->orig_content_len = 0;
                 p->content_idx      = 0;
+                p->status_code      = 0;
 
                 if (hooks->on_msg_start) {
                     if ((hooks->on_msg_start)(p)) {
