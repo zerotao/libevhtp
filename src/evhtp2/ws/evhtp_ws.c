@@ -273,7 +273,7 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                     }
 
                     p->content_len -= to_read;
-                    i += to_read;
+                    i += to_read - 1;
                 }
 
                 if (p->content_len == 0) {

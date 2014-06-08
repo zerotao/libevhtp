@@ -237,7 +237,9 @@ void evhtp_set_post_accept_cb(evhtp_t * htp, evhtp_post_accept_cb, void * arg);
  * @brief sets a callback to be executed on a specific path
  *
  * @param htp the initialized evhtp_t
- * @param path the path to match
+ * @param path the path to match, if the path begins with 'ws://' this request
+ *        can be treated as a websocket if the neeeded. The 'ws://' will be cut
+ *        off for the actual path.
  * @param cb the function to be executed
  * @param arg user-defined argument passed to the callback
  *
@@ -755,7 +757,7 @@ uint64_t          evhtp_req_get_content_len(evhtp_req_t * req);
 evhtp_hdrs_t    * evhtp_req_get_headers_out(evhtp_req_t * req);
 evhtp_hdrs_t    * evhtp_req_get_headers_in(evhtp_req_t * req);
 
-#define EVHTP_PATH_GET_FN(vname, vtype) vtype evhtp_path_get_ ## vname(evhtp_path_t *);
+#define EVHTP_PATH_GET_FN(vname, vtype) vtype evhtp_path_get_ ## vname(evhtp_path_t *)
 EVHTP_PATH_GET_FN(full, const char *);
 EVHTP_PATH_GET_FN(path, const char *);
 EVHTP_PATH_GET_FN(file, const char *);

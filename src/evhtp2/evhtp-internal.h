@@ -25,6 +25,8 @@ extern "C" {
 #include "evhtp2/regex/evhtp_regex.h"
 #endif
 
+#include "evhtp2/ws/evhtp_ws.h"
+
 struct evhtp_defaults {
     evhtp_callback_cb    cb;
     evhtp_pre_accept_cb  pre_accept;
@@ -123,10 +125,10 @@ struct evhtp_req {
     uint8_t           finished  : 1;       /**< set to 1 if the req is fully processed */
     uint8_t           chunked   : 1;       /**< set to 1 if the req is chunked */
     uint8_t           error     : 1;
-#if 0
-    uint8_t ws : 1;
-#endif
+    uint8_t           websock   : 1;
+    evhtp_ws_parser * ws_parser;
 
+    uint8_t           cb_has_websock;
     evhtp_callback_cb cb;                  /**< the function to call when fully processed */
     void            * cbarg;               /**< argument which is passed to the cb function */
 
@@ -154,11 +156,12 @@ struct evhtp_alias {
  *
  */
 struct evhtp_callback {
-    evhtp_callback_type type;           /**< the type of callback (regex|path) */
-    evhtp_callback_cb   cb;             /**< the actual callback function */
-    unsigned int        hash;           /**< the full hash generated integer */
-    void              * cbarg;          /**< user-defind arguments passed to the cb */
-    evhtp_hooks_t     * hooks;          /**< per-callback hooks */
+    evhtp_callback_type type;    /**< the type of callback (regex|path) */
+    evhtp_callback_cb   cb;      /**< the actual callback function */
+    unsigned int        hash;    /**< the full hash generated integer */
+    uint8_t             websock; /**< if the path contained ws:// it means we accept websockets */
+    void              * cbarg;   /**< user-defind arguments passed to the cb */
+    evhtp_hooks_t     * hooks;   /**< per-callback hooks */
 
     union {
         char * path;

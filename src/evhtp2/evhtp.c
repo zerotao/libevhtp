@@ -20,9 +20,9 @@
 #include <sys/un.h>
 #endif
 #include <limits.h>
+#include <assert.h>
 
 #include "evhtp2/evhtp-internal.h"
-#include "evhtp2/ws/evhtp_ws.h"
 
 static int            _evhtp_req_parser_start(evhtp_parser * p);
 static int            _evhtp_req_parser_path(evhtp_parser * p, const char * data, size_t len);
@@ -264,7 +264,7 @@ _ws_msg_complete(evhtp_ws_parser * p) {
 
 static int
 _ws_msg_payload(evhtp_ws_parser * p, const char * d, size_t l) {
-    printf("Got %zu\n", l);
+    printf("Got %zu %.*s\n", l, (int)l, d);
 
     return 0;
 }
@@ -685,7 +685,6 @@ _evhtp_req_free(evhtp_req_t * req) {
     evhtp_hdrs_free(req->headers_in);
     evhtp_hdrs_free(req->headers_out);
 
-
     if (req->buffer_in) {
         evbuffer_free(req->buffer_in);
     }
@@ -694,6 +693,8 @@ _evhtp_req_free(evhtp_req_t * req) {
         evbuffer_free(req->buffer_out);
     }
 
+    /* XXX should be evhtp_ws_parser_free() */
+    free(req->ws_parser);
     free(req->hooks);
     free(req);
 }
@@ -1076,8 +1077,9 @@ _evhtp_req_set_callbacks(evhtp_req_t * req) {
         memcpy(req->hooks, hooks, sizeof(evhtp_hooks_t));
     }
 
-    req->cb    = cb;
-    req->cbarg = cbarg;
+    req->cb             = cb;
+    req->cbarg          = cbarg;
+    req->cb_has_websock = callback ? callback->websock : 0;
 
     return 0;
 } /* _evhtp_req_set_callbacks */
@@ -1172,52 +1174,61 @@ _evhtp_req_parser_path(evhtp_parser * p, const char * data, size_t len) {
 
 static int
 _evhtp_req_parser_headers(evhtp_parser * p) {
-    evhtp_conn_t * c = evhtp_parser_get_userdata(p);
+    evhtp_conn_t * c   = evhtp_parser_get_userdata(p);
+    evhtp_req_t  * req = c->req;
 
     /* XXX proto should be set with evhtp_parsers on_hdrs_begin hook */
-    c->req->keepalive = evhtp_parser_should_keep_alive(p);
-    c->req->proto     = _evhtp_protocol(evhtp_parser_get_major(p), evhtp_parser_get_minor(p));
-    c->req->status    = _evhtp_hdrs_hook(c->req, c->req->headers_in);
+    req->keepalive = evhtp_parser_should_keep_alive(p);
+    req->proto     = _evhtp_protocol(evhtp_parser_get_major(p), evhtp_parser_get_minor(p));
+    req->status    = _evhtp_hdrs_hook(req, req->headers_in);
 
-    if (c->req->status != EVHTP_RES_OK) {
+    if (req->status != EVHTP_RES_OK) {
         return -1;
     }
 
-    if (c->type == evhtp_type_server) {
-        const char * connection;
+    if (c->type != evhtp_type_server) {
+        return 0;
+    }
 
-        if (c->htp->disable_100_cont == 0) {
-            /* only send a 100 continue response if it hasn't been disabled via
-             * evhtp_disable_100_continue.
-             */
-            if (evhtp_hdr_find(c->req->headers_in, "Expect")) {
-                evbuffer_add_printf(bufferevent_get_output(c->bev),
-                                    "HTTP/%d.%d 100 Continue\r\n\r\n",
-                                    evhtp_parser_get_major(p),
-                                    evhtp_parser_get_minor(p));
-            }
+    if (!c->htp->disable_100_cont) {
+        if (evhtp_hdr_find(req->headers_in, "Expect")) {
+            evbuffer_add_printf(bufferevent_get_output(c->bev),
+                                "HTTP/%d.%d 100 Continue\r\n\r\n",
+                                evhtp_parser_get_major(p),
+                                evhtp_parser_get_minor(p));
         }
+    }
 
-#if 0
-        if ((connection = evhtp_hdr_find(c->req->headers_in, "Connection"))) {
-            if (!strcmp(connection, "Upgrade")) {
-                int res;
+    if (req->cb && req->cb_has_websock) {
+        /* the callback that was set was enabled with websocket support, here we
+         * check the value of the Connection header, and if "Upgrade" is the
+         * value, we attempt to create the handshake. If the handshake fails for
+         * any reason, the entire request is dropped.
+         *
+         * On the other hand, if the handshake is a success, we must set the
+         * request 'websocket' value to 1, and start a response with a SWITCH
+         * PROTOCOL response. This lets the _evhtp_conn_readcb() function to
+         * process further data as websockets, instead of normal HTTP.
+         */
+        const char * conn_val;
 
-                res = evhtp_ws_gen_handshake(
-                    c->req->headers_in,
-                    c->req->headers_out);
+        if ((conn_val = evhtp_hdr_find(req->headers_in, "Connection"))) {
+            if (!strcmp(conn_val, "Upgrade")) {
+                int ws_hs_res;
 
-                if (res == -1) {
+                ws_hs_res = evhtp_ws_gen_handshake(
+                    req->headers_in,
+                    req->headers_out);
+
+                if (ws_hs_res == -1) {
                     return -1;
                 }
 
-                c->req->ws = 1;
+                req->websock = 1;
 
-                evhtp_send_reply_start(c->req, EVHTP_RES_SWITCH_PROTO);
-                return 0;
+                evhtp_send_reply_start(req, EVHTP_RES_SWITCH_PROTO);
             }
         }
-#endif
     }
 
     return 0;
@@ -1535,7 +1546,8 @@ _evhtp_conn_resumecb(int fd, short events, void * arg) {
 
 static void
 _evhtp_conn_readcb(struct bufferevent * bev, void * arg) {
-    evhtp_conn_t * c = arg;
+    evhtp_conn_t * c   = arg;
+    evhtp_req_t  * req = c->req;
     void         * buf;
     size_t         nread;
     size_t         avail;
@@ -1546,27 +1558,34 @@ _evhtp_conn_readcb(struct bufferevent * bev, void * arg) {
         return;
     }
 
-    if (c->req) {
-        c->req->status = EVHTP_RES_OK;
+    if (req) {
+        req->status = EVHTP_RES_OK;
     }
 
     if (c->paused) {
         return;
     }
 
-    buf   = evbuffer_pullup(bufferevent_get_input(bev), avail);
+    buf = evbuffer_pullup(bufferevent_get_input(bev), avail);
 
-    nread = evhtp_parser_run(c->parser, &req_psets, (const char *)buf, avail);
-#if 0
-    if (c->req && c->req->ws == 1) {
-        evhtp_ws_parser * wsp = evhtp_ws_parser_new();
+    if (req && req->websock) {
+        /* process this data as websocket data, if the websocket parser has not
+         * been allocated, we allocate it first.
+         */
+        if (req->ws_parser == NULL) {
+            req->ws_parser = evhtp_ws_parser_new();
+        }
 
-        nread = evhtp_ws_parser_run(wsp, &ws_hooks, buf, avail);
-        printf("Got %zu\n", nread);
+        assert(req->ws_parser != NULL);
+
+        /* XXX need a parser_init / parser_set_userdata */
+        nread = evhtp_ws_parser_run(req->ws_parser,
+                                    &ws_hooks, buf, avail);
     } else {
-        nread = evhtp_parser_run(c->parser, &req_psets, (const char *)buf, avail);
+        /* process as normal HTTP data. */
+        nread = evhtp_parser_run(c->parser,
+                                 &req_psets, buf, avail);
     }
-#endif
 
     if (c->owner != 1) {
         /*
@@ -1578,11 +1597,13 @@ _evhtp_conn_readcb(struct bufferevent * bev, void * arg) {
         return;
     }
 
-    if (c->req) {
-        switch (c->req->status) {
+    req = c->req;
+
+    if (req) {
+        switch (req->status) {
             case EVHTP_RES_DATA_TOO_LONG:
-                if (c->req->hooks && c->req->hooks->on_error) {
-                    (*c->req->hooks->on_error)(c->req, -1, c->req->hooks->on_error_arg);
+                if (req->hooks && req->hooks->on_error) {
+                    (*req->hooks->on_error)(req, -1, req->hooks->on_error_arg);
                 }
                 evhtp_conn_free(c);
                 return;
@@ -1593,8 +1614,9 @@ _evhtp_conn_readcb(struct bufferevent * bev, void * arg) {
 
     evbuffer_drain(bufferevent_get_input(bev), nread);
 
-    if (c->req && c->req->status == EVHTP_RES_PAUSE) {
-        evhtp_req_pause(c->req);
+    printf("%zu %zu\n", avail, nread);
+    if (req && req->status == EVHTP_RES_PAUSE) {
+        evhtp_req_pause(req);
     } else if (avail != nread) {
         evhtp_conn_free(c);
     }
@@ -2829,6 +2851,11 @@ evhtp_callback_new(const char * path, evhtp_callback_type type, evhtp_callback_c
         return NULL;
     }
 
+    if (strncmp(path, "ws://", 5) == 0) {
+        hcb->websock = 1;
+        path        += 5;
+    }
+
     hcb->type  = type;
     hcb->cb    = cb;
     hcb->cbarg = arg;
@@ -2858,7 +2885,7 @@ evhtp_callback_new(const char * path, evhtp_callback_type type, evhtp_callback_c
     } /* switch */
 
     return hcb;
-}
+}     /* evhtp_callback_new */
 
 void
 evhtp_callback_free(evhtp_callback_t * callback) {

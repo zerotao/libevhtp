@@ -22,4 +22,7 @@ target_link_libraries(test_client ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
 add_executable(test_ws EXCLUDE_FROM_ALL test_ws.c)
 target_link_libraries(test_ws ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
 
-add_dependencies(examples test test_basic test_client test_ws)
+add_executable(test_websocket EXCLUDE_FROM_ALL test_websocket.c)
+target_link_libraries(test_websocket ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
+
+add_dependencies(examples test test_basic test_client test_ws test_websocket)
