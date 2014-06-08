@@ -66,6 +66,9 @@ strndup(const char * s, size_t n) {
 #endif
 
 #ifndef HAVE_NTOHLL
+#if HOST_BIG_ENDIAN
+#define ntohll(x) (x)
+#else
 static inline uint64_t
 ntohll(uint64_t v) {
     uint64_t  h;
@@ -84,8 +87,12 @@ ntohll(uint64_t v) {
 }
 
 #endif
+#endif
 
 #ifndef HAVE_HTONLL
+#if HOST_BIG_ENDIAN
+#define htonll(x) (x)
+#else
 static inline uint64_t
 htonll(uint64_t v) {
     uint64_t  h = 0;
@@ -103,6 +110,7 @@ htonll(uint64_t v) {
     return h;
 }
 
+#endif
 #endif
 
 #ifdef __cplusplus
