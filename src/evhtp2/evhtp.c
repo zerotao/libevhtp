@@ -291,44 +291,6 @@ static evhtp_ws_hooks ws_hooks = {
 };
 
 /*
- * COMPAT FUNCTIONS
- */
-
-#ifdef NO_STRNLEN
-static size_t
-strnlen(const char * s, size_t maxlen) {
-    const char * e;
-    size_t       n;
-
-    for (e = s, n = 0; *e && n < maxlen; e++, n++) {
-        ;
-    }
-
-    return n;
-}
-
-#endif
-
-#ifdef NO_STRNDUP
-static char *
-strndup(const char * s, size_t n) {
-    size_t len = strnlen(s, n);
-    char * ret;
-
-    if (len < n) {
-        return strdup(s);
-    }
-
-    ret    = malloc(n + 1);
-    ret[n] = '\0';
-
-    strncpy(ret, s, n);
-    return ret;
-}
-
-#endif
-
-/*
  * PRIVATE FUNCTIONS
  */
 

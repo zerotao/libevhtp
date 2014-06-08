@@ -214,7 +214,7 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                     return i;
                 }
 
-                p->frame.payload_len = *(uint16_t *)&data[i];
+                p->frame.payload_len = ntohs(*(uint16_t *)&data[i]);
                 p->content_len       = p->frame.payload_len;
                 p->orig_content_len  = p->content_len;
 
@@ -235,7 +235,7 @@ evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks,
                 }
 
 
-                p->frame.payload_len = *(uint64_t *)&data[i];
+                p->frame.payload_len = ntohll(*(uint64_t *)&data[i]);
                 p->content_len       = p->frame.payload_len;
                 p->orig_content_len  = p->content_len;
 
