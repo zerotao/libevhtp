@@ -267,6 +267,10 @@ _ws_msg_fini(evhtp_ws_parser * p) {
     req = evhtp_ws_parser_get_userdata(p);
     assert(req != NULL);
 
+    if (req->cb) {
+        (req->cb)(req, req->cbarg);
+    }
+
     printf("COMPLETE!\n");
 
     return 0;
@@ -279,6 +283,7 @@ _ws_msg_data(evhtp_ws_parser * p, const char * d, size_t l) {
     req = evhtp_ws_parser_get_userdata(p);
     assert(req != NULL);
 
+    evbuffer_add(req->buffer_in, d, l);
     printf("Got %zu %.*s\n", l, (int)l, d);
 
     return 0;

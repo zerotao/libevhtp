@@ -38,5 +38,7 @@ ssize_t           evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hook
 void              evhtp_ws_parser_set_userdata(evhtp_ws_parser * p, void * usrdata);
 void            * evhtp_ws_parser_get_userdata(evhtp_ws_parser * p);
 
+unsigned char   * evhtp_ws_pack(const char * data, size_t len, size_t * outlen);
+
 #endif
 
