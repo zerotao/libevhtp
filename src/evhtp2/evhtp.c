@@ -2475,12 +2475,6 @@ query_key:
                         val_idx = 0;
                         state   = s_query_key;
                         break;
-                    case ';':
-                    case '&':
-                        /* no = for key, so ignore it and look for next key */
-                        memset(key_buf, 0, len);
-                        key_idx            = 0;
-                        break;
                     default:
                         key_buf[key_idx++] = ch;
                         key_buf[key_idx]   = '\0';
@@ -3061,10 +3055,6 @@ evhtp_set_hook(evhtp_hooks_t ** hooks, evhtp_hook_type type, evhtp_hook cb, void
         case evhtp_hook_on_write:
             (*hooks)->on_write = (evhtp_hook_write_cb)cb;
             (*hooks)->on_write_arg         = arg;
-            break;
-        case evhtp_hook_on_event:
-            (*hooks)->on_event = (evhtp_hook_event_cb)cb;
-            (*hooks)->on_event_arg         = arg;
             break;
         case evhtp_hook_on_event:
             (*hooks)->on_event = (evhtp_hook_event_cb)cb;
