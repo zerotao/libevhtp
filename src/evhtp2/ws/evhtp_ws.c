@@ -52,11 +52,11 @@
 #define PARSER_STACK_MAX     8192
 
 struct evhtp_ws_frame_hdr_s {
-    uint8_t fin    : 1,
-            rsv1   : 1,
-            rsv2   : 1,
+    uint8_t opcode : 4,
             rsv3   : 1,
-            opcode : 4;
+            rsv2   : 1,
+            rsv1   : 1,
+            fin    : 1;
 
     #define OP_CONT          0x0
     #define OP_TEXT          0x1
@@ -75,8 +75,8 @@ struct evhtp_ws_frame_hdr_s {
     #define OP_CONTROL_RES4  0xE
     #define OP_CONTROL_RES5  0xF
 
-    uint8_t mask : 1,
-            len  : 7;
+    uint8_t len  : 7,
+            mask : 1;
 } __attribute__((packed));
 
 struct evhtp_ws_data_s {
@@ -440,21 +440,19 @@ evhtp_ws_data_new(const char * data, size_t len) {
     }
 
     extra_bytes         = _fext_len[frame_len];
-    ws_datalen          = sizeof(evhtp_ws_data) + len + extra_bytes + sizeof(uint32_t);
+    ws_datalen          = sizeof(evhtp_ws_data) + len + extra_bytes;
 
     ws_data             = calloc(ws_datalen, 1);
     ws_data->hdr.len    = frame_len ? frame_len : len;
     ws_data->hdr.fin    = 1;
-    ws_data->hdr.mask   = 1;
+    ws_data->hdr.mask   = 0;
     ws_data->hdr.opcode = OP_TEXT;
 
     if (frame_len) {
         memcpy(ws_data->payload, &len, extra_bytes);
     }
 
-    uint32_t r = rand();
-    memcpy((char *)(ws_data->payload + extra_bytes), &r, sizeof(r));
-    memcpy((char *)(ws_data->payload + extra_bytes + sizeof(r)), data, len);
+    memcpy((char *)(ws_data->payload + extra_bytes), data, len);
 
     return ws_data;
 }
@@ -483,132 +481,34 @@ evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len) {
 
     switch (ws_data->hdr.len) {
         case 126:
-            payload_end  = (unsigned char *)(payload_start +
-                                             *(uint16_t *)ws_data->payload);
+            payload_end  = (unsigned char *)(payload_start + *(uint16_t *)ws_data->payload);
             payload_end += 2;
             break;
         case 127:
-            payload_end  = (unsigned char *)(payload_start +
-                                             *(uint64_t *)ws_data->payload);
+            payload_end  = (unsigned char *)(payload_start + *(uint64_t *)ws_data->payload);
             payload_end += 8;
             break;
         default:
-            payload_end  = (unsigned char *)(payload_start +
-                                             ws_data->hdr.len + 4);
+            payload_end  = (unsigned char *)(payload_start + ws_data->hdr.len);
             break;
     }
 
 
-    if (!(res = calloc(sizeof(evhtp_ws_frame_hdr) +
-                       (payload_end - payload_start), 1))) {
+    if (!(res = calloc(sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start), 1))) {
         return NULL;
     }
 
-    memcpy((void *)res, &ws_data->hdr, sizeof(evhtp_ws_frame_hdr));
-    memcpy((void *)(res + sizeof(evhtp_ws_frame_hdr)),
-           payload_start, (payload_end - payload_start));
+    *(uint16_t *)res = *(uint16_t *)&ws_data->hdr;
 
-    *out_len = sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start);
+    memcpy((char *)(res + sizeof(uint16_t)), payload_start,
+           (payload_end - payload_start));
+
+    *out_len         = sizeof(evhtp_ws_frame_hdr) + (payload_end - payload_start);
 
     return res;
 } /* evhtp_ws_data_pack */
 
 EXPORT_SYMBOL(evhtp_ws_data_pack);
-
-#if 0
-unsigned char *
-evhtp_ws_pack(const char * data, size_t len, size_t * out_len) {
-    evhtp_ws_data * w_data;
-    unsigned char * res;
-
-    if (!data || !len) {
-        return NULL;
-    }
-
-    if (!(w_data = evhtp_ws_data_new(data, len))) {
-        return NULL;
-    }
-
-    res = evhtp_ws_data_pack(w_data, out_len);
-
-    evhtp_ws_data_free(w_data);
-
-    return res;
-}
-
-#endif
-
-unsigned char *
-evhtp_ws_pack(const char * data, size_t len, size_t * outlen) {
-    struct evbuffer  * buf;
-    evhtp_ws_frame_hdr hdr;
-    uint8_t            frame_len;
-    uint32_t           mask;
-    uint16_t rhdr;
-    char             * ret;
-    char dcpy[len];
-
-#if 0
-    if (len <= 125) {
-        frame_len = 0;
-    } else if (len > 125 && len <= 65535) {
-        frame_len = 126;
-    } else {
-        frame_len = 127;
-    }
-#endif
-
-    buf         = evbuffer_new();
-
-    memset(&hdr, 0, sizeof(hdr));
-
-    hdr.fin    = 0b0001;
-    hdr.opcode = 0b1000;
-    hdr.rsv1 = 0;
-    hdr.rsv2 = 0;
-    hdr.rsv3 = 0;
-
-    hdr.mask   = 0;
-    hdr.len    = len;
-
-    printf("fin = %d, opcode = %d, mask = %d, len = %d, mask=%u\n",
-	    hdr.fin, hdr.opcode, hdr.mask, hdr.len, mask);
-
-    uint8_t b1 = *(uint8_t*)&hdr;
-    uint8_t b2 = (b1 & 0xF);
-
-
-    evbuffer_add(buf, &hdr, sizeof(hdr));
-    //evbuffer_add(buf, &mask, sizeof(mask));
-
-#if 0
-    int z;
-    int idx = 0;
-
-    for (z = 0; z < len; z++) {
-	int j = idx % 4;
-	unsigned char xf;
-
-	xf = (mask & __MASK[j]) >> __SHIFT[j];
-	dcpy[z] = data[z] ^ xf;
-	idx++;
-    }
-
-    evbuffer_add(buf, dcpy, len);
-#endif
-    evbuffer_add(buf, data, len);
-
-    *outlen = evbuffer_get_length(buf);
-
-    ret     = calloc(*outlen, 1);
-
-    memcpy(ret, evbuffer_pullup(buf, *outlen), *outlen);
-
-    evbuffer_free(buf);
-    return ret;
-}
-
-EXPORT_SYMBOL(evhtp_ws_pack);
 
 evhtp_ws_parser *
 evhtp_ws_parser_new(void) {

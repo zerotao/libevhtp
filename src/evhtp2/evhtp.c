@@ -1673,7 +1673,6 @@ _evhtp_conn_writecb(struct bufferevent * bev, void * arg) {
 
         evhtp_parser_init(c->parser, evhtp_parser_type_request);
 
-
         evhtp_parser_set_userdata(c->parser, c);
         return;
     } else {

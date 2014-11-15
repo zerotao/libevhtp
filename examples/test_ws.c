@@ -14,26 +14,24 @@
 void
 testcb(evhtp_req_t * req, void * a) {
     const char         * str    = a;
+    struct evbuffer    * resp;
     struct evbuffer    * inbuf  = evhtp_req_buffer_in(req);
     struct bufferevent * bev    = evhtp_req_get_bev(req);
     size_t               inlen  = evbuffer_get_length(inbuf);
     unsigned char      * outbuf;
     size_t               outlen = 0;
+    evhtp_ws_data      * ws_data;
 
 
-    printf("Uhm...%.*s\n", (int)inlen, evbuffer_pullup(inbuf, inlen));
+    fprintf(stderr, "Uhm...%.*s\n", (int)inlen, evbuffer_pullup(inbuf, inlen));
 
-    outbuf = evhtp_ws_pack(evbuffer_pullup(inbuf, inlen), inlen, &outlen);
-    assert(outbuf != NULL);
+    ws_data = evhtp_ws_data_new("Hello", 5);
+    outbuf  = evhtp_ws_data_pack(ws_data, &outlen);
 
-    printf("Writing %zu\n", outlen);
-    bufferevent_write(bev, outbuf, outlen);
+    resp    = evbuffer_new();
+    evbuffer_add(resp, outbuf, outlen);
 
-    evbuffer_drain(inbuf, inlen);
-    /*
-     * evbuffer_add_printf(evhtp_req_buffer_out(req), "%s", str);
-     * evhtp_send_reply(req, EVHTP_RES_OK);
-     */
+    evhtp_send_reply_body(req, resp);
 }
 
 int
