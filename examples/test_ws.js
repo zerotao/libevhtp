@@ -21,8 +21,7 @@ onClose(evt) {
 function
 onMessage(evt) {
     writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data + '</span>');
-		doSend("FUCK");
-    //websocket.close();
+    websocket.close();
 }
 
 function
