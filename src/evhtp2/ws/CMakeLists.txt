@@ -5,3 +5,5 @@ set (evhtp_ws_SRCS
 )
 
 add_target_sources(libevhtp ${evhtp_ws_SRCS})
+
+install(FILES evhtp_ws.h DESTINATION ${INCLUDE_INSTALL_DIR}/evhtp2/ws)
