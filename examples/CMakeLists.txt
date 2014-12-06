@@ -22,4 +22,16 @@ target_link_libraries(test_client ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
 add_executable(test_ws EXCLUDE_FROM_ALL test_ws.c)
 target_link_libraries(test_ws ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
 
-add_dependencies(examples test test_basic test_client test_ws)
+add_executable(test_proxy EXCLUDE_FROM_ALL test_proxy.c)
+target_link_libraries(test_proxy ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
+
+add_executable(test_query EXCLUDE_FROM_ALL test_query.c)
+target_link_libraries(test_query ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
+
+add_executable(test_vhost EXCLUDE_FROM_ALL test_vhost.c)
+target_link_libraries(test_vhost ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
+
+add_executable(thread_design EXCLUDE_FROM_ALL thread_design.c)
+target_link_libraries(thread_design ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
+
+add_dependencies(examples test test_basic test_client test_ws test_proxy)

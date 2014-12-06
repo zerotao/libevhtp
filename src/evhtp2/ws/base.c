@@ -607,8 +607,6 @@ base_encode(base_definition_t * def, const void * in, size_t in_bytes, void **ou
     return -1;
 } /* base_encode */
 
-EXPORT_SYMBOL(base_encode);
-
 /*
  * decodes the encoded data from void * in and writes the output to
  * the void ** out pointer. If *out is NULL and *out_bytes is 0, *out is
@@ -689,4 +687,3 @@ base_decode(base_definition_t * def, const void * in, size_t in_bytes, void ** o
     return -1;
 } /* base_decode */
 
-EXPORT_SYMBOL(base_decode);

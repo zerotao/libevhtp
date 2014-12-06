@@ -422,8 +422,6 @@ evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out) {
     return 0;
 } /* evhtp_ws_gen_handshake */
 
-EXPORT_SYMBOL(evhtp_ws_gen_handshake);
-
 evhtp_ws_data *
 evhtp_ws_data_new(const char * data, size_t len) {
     evhtp_ws_data * ws_data;
@@ -457,14 +455,10 @@ evhtp_ws_data_new(const char * data, size_t len) {
     return ws_data;
 }
 
-EXPORT_SYMBOL(evhtp_ws_data_new);
-
 void
 evhtp_ws_data_free(evhtp_ws_data * ws_data) {
     return free(ws_data);
 }
-
-EXPORT_SYMBOL(evhtp_ws_data_free);
 
 unsigned char *
 evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len) {
@@ -508,14 +502,10 @@ evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len) {
     return res;
 } /* evhtp_ws_data_pack */
 
-EXPORT_SYMBOL(evhtp_ws_data_pack);
-
 evhtp_ws_parser *
 evhtp_ws_parser_new(void) {
     return calloc(sizeof(evhtp_ws_parser), 1);
 }
-
-EXPORT_SYMBOL(evhtp_ws_parser_new);
 
 void
 evhtp_ws_parser_set_userdata(evhtp_ws_parser * p, void * usrdata) {
@@ -524,13 +514,9 @@ evhtp_ws_parser_set_userdata(evhtp_ws_parser * p, void * usrdata) {
     p->usrdata = usrdata;
 }
 
-EXPORT_SYMBOL(evhtp_ws_parser_set_userdata);
-
 void *
 evhtp_ws_parser_get_userdata(evhtp_ws_parser * p) {
     assert(p != NULL);
 
     return p->usrdata;
 }
-
-EXPORT_SYMBOL(evhtp_ws_parser_get_userdata);

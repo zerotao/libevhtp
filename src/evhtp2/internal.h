@@ -8,11 +8,12 @@ extern "C" {
 #include "evhtp2/evhtp-config.h"
 
 
-#ifdef EVHTP_HAS_VISIBILITY_HIDDEN
-#define __visible __attribute__((visibility("default")))
-#define EXPORT_SYMBOL(x) typeof(x)(x)__visible
-#else
-#define EXPORT_SYMBOL(n)
+#ifndef EVHTP_EXPORT
+# if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER || defined __clang__
+#  define EVHTP_EXPORT __attribute__ ((visibility("default")))
+# else
+#  define EVHTP_EXPORT
+# endif
 #endif
 
 #ifndef TAILQ_FOREACH_SAFE

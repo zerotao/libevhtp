@@ -1930,25 +1930,3 @@ hdrline_start:
 
     return i;
 }         /* evhtp_parser_run */
-
-EXPORT_SYMBOL(evhtp_parser_run);
-EXPORT_SYMBOL(evhtp_parser_should_keep_alive);
-EXPORT_SYMBOL(evhtp_parser_get_scheme);
-EXPORT_SYMBOL(evhtp_parser_get_method);
-EXPORT_SYMBOL(evhtp_parser_get_methodstr);
-EXPORT_SYMBOL(evhtp_parser_get_methodstr_m);
-EXPORT_SYMBOL(evhtp_parser_set_major);
-EXPORT_SYMBOL(evhtp_parser_set_minor);
-EXPORT_SYMBOL(evhtp_parser_get_major);
-EXPORT_SYMBOL(evhtp_parser_get_minor);
-EXPORT_SYMBOL(evhtp_parser_get_multipart);
-EXPORT_SYMBOL(evhtp_parser_get_status);
-EXPORT_SYMBOL(evhtp_parser_get_content_length);
-EXPORT_SYMBOL(evhtp_parser_get_content_pending);
-EXPORT_SYMBOL(evhtp_parser_get_total_bytes_read);
-EXPORT_SYMBOL(evhtp_parser_get_error);
-EXPORT_SYMBOL(evhtp_parser_get_strerror);
-EXPORT_SYMBOL(evhtp_parser_get_userdata);
-EXPORT_SYMBOL(evhtp_parser_set_userdata);
-EXPORT_SYMBOL(evhtp_parser_init);
-EXPORT_SYMBOL(evhtp_parser_new);

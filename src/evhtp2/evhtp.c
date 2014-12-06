@@ -93,27 +93,11 @@ static void           _evhtp_path_free(evhtp_path_t * path);
 #define _evhtp_unlock(h)                       do {} while (0)
 #endif
 
-#define __GEN_GET_PATH_FUNC(valname, valtype)      \
-    inline valtype                                 \
-    evhtp_path_get_ ## valname(evhtp_path_t * k) { \
-        return k->valname;                         \
-    }                                              \
-    EXPORT_SYMBOL(evhtp_path_get_ ## valname);
-
-__GEN_GET_PATH_FUNC(full, const char *);
-__GEN_GET_PATH_FUNC(path, const char *);
-__GEN_GET_PATH_FUNC(file, const char *);
-__GEN_GET_PATH_FUNC(match_start, const char *);
-__GEN_GET_PATH_FUNC(match_end, const char *);
-__GEN_GET_PATH_FUNC(matched_soff, unsigned int);
-__GEN_GET_PATH_FUNC(matched_eoff, unsigned int);
-
 #define __GEN_GET_KV_FUNC(valname, valtype)    \
     inline valtype                             \
     evhtp_kv_get_ ## valname(evhtp_kv_t * k) { \
         return k->valname;                     \
-    }                                          \
-    EXPORT_SYMBOL(evhtp_kv_get_ ## valname);
+    }
 
 __GEN_GET_KV_FUNC(key, const char *);
 __GEN_GET_KV_FUNC(val, const char *);
@@ -1961,10 +1945,6 @@ _evhtp_accept_cb(struct evconnlistener * serv, int fd, struct sockaddr * s, int 
  * PUBLIC FUNCTIONS
  */
 
-evhtp_method
-evhtp_req_get_method(evhtp_req_t * r) {
-    return evhtp_parser_get_method(r->conn->parser);
-}
 
 /**
  * @brief pauses a conn (disables reading)
@@ -2624,7 +2604,6 @@ error:
     return NULL;
 }     /* evhtp_parse_query */
 
-EXPORT_SYMBOL(evhtp_parse_query_wflags);
 
 evhtp_query_t *
 evhtp_parse_query(const char * query, size_t len) {
@@ -3140,7 +3119,6 @@ evhtp_req_get_content_len(evhtp_req_t * req) {
     return evhtp_parser_get_content_length(req->conn->parser);
 }
 
-EXPORT_SYMBOL(evhtp_req_get_content_len);
 
 inline int
 evhtp_req_set_hook(evhtp_req_t * req,
@@ -3148,7 +3126,6 @@ evhtp_req_set_hook(evhtp_req_t * req,
     return evhtp_set_hook(&req->hooks, type, cb, arg);
 }
 
-EXPORT_SYMBOL(evhtp_req_set_hook);
 
 inline int
 evhtp_conn_set_hook(evhtp_conn_t * conn,
@@ -3156,7 +3133,6 @@ evhtp_conn_set_hook(evhtp_conn_t * conn,
     return evhtp_set_hook(&conn->hooks, type, cb, arg);
 }
 
-EXPORT_SYMBOL(evhtp_conn_set_hook);
 
 inline int
 evhtp_callback_set_hook(evhtp_callback_t * callback,
@@ -3164,7 +3140,6 @@ evhtp_callback_set_hook(evhtp_callback_t * callback,
     return evhtp_set_hook(&callback->hooks, type, cb, arg);
 }
 
-EXPORT_SYMBOL(evhtp_callback_set_hook);
 
 evhtp_callback_t *
 evhtp_set_cb(evhtp_t * htp, const char * path, evhtp_callback_cb cb, void * arg) {
@@ -3293,18 +3268,50 @@ evhtp_set_post_accept_cb(evhtp_t * htp, evhtp_post_accept_cb cb, void * arg) {
     htp->defaults.post_accept_cbarg = arg;
 }
 
-inline struct event_base *
-evhtp_conn_get_evbase(evhtp_conn_t * conn) {
-    return conn->evbase;
+#define __CONN_GET_FN(vname, vtype, vfail)       \
+    inline vtype                                 \
+    evhtp_conn_get_ ## vname(evhtp_conn_t * k) { \
+        return k ? k->vname : vfail;             \
+    }
+__CONN_GET_FN(sock, evutil_socket_t, 0)
+__CONN_GET_FN(bev, struct bufferevent *, NULL);
+__CONN_GET_FN(evbase, struct event_base *, NULL);
+__CONN_GET_FN(resume_ev, struct event *, NULL);
+__CONN_GET_FN(saddr, struct sockaddr *, NULL);
+inline struct timeval *
+evhtp_conn_get_recv_timeo(evhtp_conn_t * k) {
+    return k ? &k->recv_timeo : NULL;
 }
-
-EXPORT_SYMBOL(evhtp_conn_get_evbase);
-
-inline struct bufferevent *
-evhtp_conn_get_bev(evhtp_conn_t * conn) {
-    return conn->bev;
+inline struct timeval *
+evhtp_conn_get_send_timeo(evhtp_conn_t * k) {
+    return k ? &k->send_timeo : NULL;
 }
+__CONN_GET_FN(req, evhtp_req_t *, NULL);
+__CONN_GET_FN(error, uint8_t, 0);
+__CONN_GET_FN(owner, uint8_t, 0);
+__CONN_GET_FN(vhost_via_sni, uint8_t, 0);
+__CONN_GET_FN(free_conn, uint8_t, 0);
+__CONN_GET_FN(connected, uint8_t, 0);
+__CONN_GET_FN(max_body_size, uint64_t, 0);
+__CONN_GET_FN(body_bytes_read, uint64_t, 0);
+__CONN_GET_FN(num_reqs, uint64_t, 0);
+__CONN_GET_FN(type, evhtp_type, 0);
+__CONN_GET_FN(paused, evhtp_pause_state, 0);
+#ifdef EVHTP_ENABLE_EVTHR
+__CONN_GET_FN(thread, evhtp_thr_t *, NULL);
+#endif
+#ifdef EVHTP_ENABLE_SSL
+__CONN_GET_FN(ssl, evhtp_ssl_t *, NULL);
+#endif
 
+#ifdef EVHTP_ENABLE_EVTHR
+evhtp_thr_t *
+evhtp_conn_set_thread(evhtp_conn_t * conn, evhtp_thr_t * thread) {
+    if (conn) {
+        conn->thread = thread;
+    }
+}
+#endif
 struct bufferevent *
 evhtp_conn_take_ownership(evhtp_conn_t * conn) {
     struct bufferevent * bev = evhtp_conn_get_bev(conn);
@@ -3337,26 +3344,78 @@ evhtp_req_take_ownership(evhtp_req_t * req) {
     return evhtp_conn_take_ownership(evhtp_req_get_conn(req));
 }
 
+
 inline struct event_base *
 evhtp_req_get_evbase(evhtp_req_t * req) {
     return evhtp_conn_get_evbase(req->conn);
 }
 
-EXPORT_SYMBOL(evhtp_req_get_evbase);
+inline evhtp_method
+evhtp_req_get_method(evhtp_req_t * r) {
+    return evhtp_parser_get_method(r->conn->parser);
+}
+
+#define __REQ_GET_FN(vname, vtype, vfail)       \
+    inline vtype                                \
+    evhtp_req_get_ ## vname(evhtp_req_t * k) {  \
+        return k ? k->vname : vfail;            \
+    }
+__REQ_GET_FN(conn, evhtp_conn_t *, NULL);
+__REQ_GET_FN(uri, evhtp_uri_t *, NULL);
+__REQ_GET_FN(status, evhtp_res, 0);
+__REQ_GET_FN(keepalive, uint8_t, 0);
+__REQ_GET_FN(finished, uint8_t, 0);
+__REQ_GET_FN(chunked, uint8_t, 0);
+__REQ_GET_FN(error, uint8_t, 0);
+__REQ_GET_FN(websock, uint8_t, 0);
 
 inline void
 evhtp_conn_set_bev(evhtp_conn_t * conn, struct bufferevent * bev) {
     conn->bev = bev;
 }
 
+
+#define __URI_GET_FN(vname, vtype, vfail)       \
+    inline vtype                                \
+    evhtp_uri_get_ ## vname(evhtp_uri_t * k) {  \
+        return k ? k->vname : vfail;            \
+    }
+__URI_GET_FN(authority, evhtp_authority_t *, NULL);
+__URI_GET_FN(path, evhtp_path_t *, NULL);
+__URI_GET_FN(fragment, unsigned char *, NULL);
+__URI_GET_FN(query_raw, unsigned char *, NULL);
+__URI_GET_FN(query, evhtp_query_t *, NULL);
+__URI_GET_FN(scheme, evhtp_parser_scheme, evhtp_parser_scheme_none);
+
+
+#define __AUTHORITY_GET_FN(vname, vtype, vfail)             \
+    inline vtype                                            \
+    evhtp_authority_get_ ## vname(evhtp_authority_t * k) {  \
+        return k ? k->vname : vfail;                        \
+    }
+__AUTHORITY_GET_FN(username, char *, NULL);
+__AUTHORITY_GET_FN(password, char *, NULL);
+__AUTHORITY_GET_FN(hostname, char *, NULL);
+__AUTHORITY_GET_FN(port, uint16_t, 0);
+
+#define __PATH_GET_FN(vname, vtype, vfail)          \
+    inline vtype                                    \
+    evhtp_path_get_ ## vname(evhtp_path_t * k) {    \
+        return k ? k->vname : vfail;                \
+    }
+__PATH_GET_FN(full, const char *, NULL);
+__PATH_GET_FN(path, const char *, NULL);
+__PATH_GET_FN(file, const char *, NULL);
+__PATH_GET_FN(match_start, const char *, NULL);
+__PATH_GET_FN(match_end, const char *, NULL);
+__PATH_GET_FN(matched_soff, unsigned int, INT_MAX);
+__PATH_GET_FN(matched_eoff, unsigned int, INT_MAX);
+
+
+
 inline void
 evhtp_req_set_bev(evhtp_req_t * req, struct bufferevent * bev) {
     evhtp_conn_set_bev(req->conn, bev);
-}
-
-evhtp_conn_t *
-evhtp_req_get_conn(evhtp_req_t * req) {
-    return req->conn;
 }
 
 inline void
@@ -3601,28 +3660,23 @@ evhtp_req_buffer_out(evhtp_req_t * req) {
     return req->buffer_out;
 }
 
-EXPORT_SYMBOL(evhtp_req_buffer_out);
 
 inline struct evbuffer *
 evhtp_req_buffer_in(evhtp_req_t * req) {
     return req->buffer_in;
 }
 
-EXPORT_SYMBOL(evhtp_req_buffer_in);
 
 inline evhtp_hdrs_t *
 evhtp_req_get_headers_out(evhtp_req_t * req) {
     return req->headers_out;
 }
 
-EXPORT_SYMBOL(evhtp_req_get_headers_out);
 
 inline evhtp_hdrs_t *
 evhtp_req_get_headers_in(evhtp_req_t * req) {
     return req->headers_in;
 }
-
-EXPORT_SYMBOL(evhtp_req_get_headers_in);
 
 /*****************************************************************
 * client req functions                                      *
@@ -3707,84 +3761,3 @@ unsigned int
 evhtp_req_status(evhtp_req_t * r) {
     return evhtp_parser_get_status(r->conn->parser);
 }
-
-EXPORT_SYMBOL(evhtp_new);
-EXPORT_SYMBOL(evhtp_free);
-EXPORT_SYMBOL(evhtp_set_timeouts);
-EXPORT_SYMBOL(evhtp_set_bev_flags);
-
-EXPORT_SYMBOL(evhtp_disable_100_continue);
-EXPORT_SYMBOL(evhtp_use_callback_locks);
-EXPORT_SYMBOL(evhtp_set_gencb);
-EXPORT_SYMBOL(evhtp_set_pre_accept_cb);
-EXPORT_SYMBOL(evhtp_set_post_accept_cb);
-EXPORT_SYMBOL(evhtp_set_cb);
-
-#ifdef EVHTP_ENABLE_REGEX
-EXPORT_SYMBOL(evhtp_set_regex_cb);
-#endif
-
-EXPORT_SYMBOL(evhtp_set_glob_cb);
-EXPORT_SYMBOL(evhtp_set_hook);
-EXPORT_SYMBOL(evhtp_unset_hook);
-EXPORT_SYMBOL(evhtp_unset_all_hooks);
-EXPORT_SYMBOL(evhtp_bind_socket);
-EXPORT_SYMBOL(evhtp_unbind_socket);
-EXPORT_SYMBOL(evhtp_bind_sockaddr);
-
-#ifdef EVHTP_ENABLE_EVTHR
-EXPORT_SYMBOL(evhtp_use_threads);
-#endif
-
-EXPORT_SYMBOL(evhtp_send_reply);
-EXPORT_SYMBOL(evhtp_send_reply_start);
-EXPORT_SYMBOL(evhtp_send_reply_body);
-EXPORT_SYMBOL(evhtp_send_reply_end);
-EXPORT_SYMBOL(evhtp_response_needs_body);
-EXPORT_SYMBOL(evhtp_send_reply_chunk_start);
-EXPORT_SYMBOL(evhtp_send_reply_chunk);
-EXPORT_SYMBOL(evhtp_send_reply_chunk_end);
-EXPORT_SYMBOL(evhtp_callback_new);
-EXPORT_SYMBOL(evhtp_callback_free);
-EXPORT_SYMBOL(evhtp_callbacks_add_callback);
-EXPORT_SYMBOL(evhtp_add_vhost);
-EXPORT_SYMBOL(evhtp_add_alias);
-EXPORT_SYMBOL(evhtp_kv_new);
-EXPORT_SYMBOL(evhtp_kvs_new);
-EXPORT_SYMBOL(evhtp_kv_free);
-EXPORT_SYMBOL(evhtp_kvs_free);
-EXPORT_SYMBOL(evhtp_kv_rm_and_free);
-EXPORT_SYMBOL(evhtp_kv_find);
-EXPORT_SYMBOL(evhtp_kvs_find_kv);
-EXPORT_SYMBOL(evhtp_kvs_add_kv);
-EXPORT_SYMBOL(evhtp_kvs_add_kvs);
-EXPORT_SYMBOL(evhtp_kvs_for_each);
-EXPORT_SYMBOL(evhtp_parse_query);
-EXPORT_SYMBOL(evhtp_unescape_string);
-EXPORT_SYMBOL(evhtp_hdr_new);
-EXPORT_SYMBOL(evhtp_hdr_key_add);
-EXPORT_SYMBOL(evhtp_hdr_val_add);
-EXPORT_SYMBOL(evhtp_hdrs_add_header);
-EXPORT_SYMBOL(evhtp_hdr_find);
-EXPORT_SYMBOL(evhtp_req_get_method);
-EXPORT_SYMBOL(evhtp_conn_pause);
-EXPORT_SYMBOL(evhtp_conn_resume);
-EXPORT_SYMBOL(evhtp_req_pause);
-EXPORT_SYMBOL(evhtp_req_resume);
-EXPORT_SYMBOL(evhtp_req_get_conn);
-EXPORT_SYMBOL(evhtp_conn_set_bev);
-EXPORT_SYMBOL(evhtp_req_set_bev);
-EXPORT_SYMBOL(evhtp_conn_get_bev);
-EXPORT_SYMBOL(evhtp_conn_set_timeouts);
-EXPORT_SYMBOL(evhtp_req_get_bev);
-EXPORT_SYMBOL(evhtp_conn_take_ownership);
-EXPORT_SYMBOL(evhtp_conn_free);
-EXPORT_SYMBOL(evhtp_req_free);
-EXPORT_SYMBOL(evhtp_set_max_body_size);
-EXPORT_SYMBOL(evhtp_conn_set_max_body_size);
-EXPORT_SYMBOL(evhtp_req_set_max_body_size);
-EXPORT_SYMBOL(evhtp_set_max_keepalive_reqs);
-EXPORT_SYMBOL(evhtp_conn_new);
-EXPORT_SYMBOL(evhtp_req_new);
-EXPORT_SYMBOL(evhtp_make_req);
-EXPORT_SYMBOL(evhtp_req_status);

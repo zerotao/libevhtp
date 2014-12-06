@@ -32,14 +32,14 @@ struct evhtp_ws_hooks_s {
     evhtp_ws_parser_hook      on_msg_fini;
 };
 
-evhtp_ws_parser * evhtp_ws_parser_new(void);
-int               evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out);
-ssize_t           evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks, const char * data, size_t len);
-void              evhtp_ws_parser_set_userdata(evhtp_ws_parser * p, void * usrdata);
-void            * evhtp_ws_parser_get_userdata(evhtp_ws_parser * p);
+EVHTP_EXPORT evhtp_ws_parser * evhtp_ws_parser_new(void);
+EVHTP_EXPORT int               evhtp_ws_gen_handshake(evhtp_kvs_t * hdrs_in, evhtp_kvs_t * hdrs_out);
+EVHTP_EXPORT ssize_t           evhtp_ws_parser_run(evhtp_ws_parser * p, evhtp_ws_hooks * hooks, const char * data, size_t len);
+EVHTP_EXPORT void              evhtp_ws_parser_set_userdata(evhtp_ws_parser * p, void * usrdata);
+EVHTP_EXPORT void            * evhtp_ws_parser_get_userdata(evhtp_ws_parser * p);
 
-evhtp_ws_data   * evhtp_ws_data_new(const char * data, size_t len);
-unsigned char   * evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len);
+EVHTP_EXPORT evhtp_ws_data   * evhtp_ws_data_new(const char * data, size_t len);
+EVHTP_EXPORT unsigned char   * evhtp_ws_data_pack(evhtp_ws_data * ws_data, size_t * out_len);
 
 #endif
 

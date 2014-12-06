@@ -380,20 +380,6 @@ evhtp_thr_pool_start(evhtp_thr_pool_t * pool) {
     return 0;
 }
 
-EXPORT_SYMBOL(evhtp_thr_new);
-EXPORT_SYMBOL(evhtp_thr_get_base);
-EXPORT_SYMBOL(evhtp_thr_set_aux);
-EXPORT_SYMBOL(evhtp_thr_get_aux);
-EXPORT_SYMBOL(evhtp_thr_start);
-EXPORT_SYMBOL(evhtp_thr_stop);
-EXPORT_SYMBOL(evhtp_thr_defer);
-EXPORT_SYMBOL(evhtp_thr_free);
-EXPORT_SYMBOL(evhtp_thr_pool_new);
-EXPORT_SYMBOL(evhtp_thr_pool_start);
-EXPORT_SYMBOL(evhtp_thr_pool_stop);
-EXPORT_SYMBOL(evhtp_thr_pool_defer);
-EXPORT_SYMBOL(evhtp_thr_pool_free);
-
 static void
 _evhtp_thread_init(evhtp_thr_t * thr, void * arg) {
     evhtp_t * htp = (evhtp_t *)arg;
@@ -419,5 +405,3 @@ evhtp_use_threads(evhtp_t * htp, evhtp_thread_init_cb init_cb, int nthreads, voi
     evhtp_thr_pool_start(htp->thr_pool);
     return 0;
 }
-
-EXPORT_SYMBOL(evhtp_use_threads);

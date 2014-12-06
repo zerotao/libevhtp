@@ -12,7 +12,7 @@ extern "C" {
 #include "evhtp2/evhtp-internal.h"
 #include "evhtp2/evhtp_ssl.h"
 
-int evhtp_ssl_servername(evhtp_ssl_t * ssl, int * unused, void * arg);
+EVHTP_EXPORT int evhtp_ssl_servername(evhtp_ssl_t * ssl, int * unused, void * arg);
 
 #ifdef __cplusplus
 }
