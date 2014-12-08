@@ -6,14 +6,14 @@
 #include <evhtp.h>
 
 void
-testcb(evhtp_request_t * req, void * a) {
-    evbuffer_add_reference(req->buffer_out, "foobar", 6, NULL, NULL);
+testcb(evhtp_req_t * req, void * a) {
+    evbuffer_add_reference(evhtp_req_buffer_out(req), "foobar", 6, NULL, NULL);
     evhtp_send_reply(req, EVHTP_RES_OK);
 }
 
 int
 main(int argc, char ** argv) {
-    evbase_t * evbase = event_base_new();
+    struct event_base * evbase = event_base_new();
     evhtp_t  * evhtp  = evhtp_new(evbase, NULL);
     evhtp_t  * v1     = evhtp_new(evbase, NULL);
     evhtp_t  * v2     = evhtp_new(evbase, NULL);
