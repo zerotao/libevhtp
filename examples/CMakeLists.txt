@@ -32,7 +32,7 @@ add_executable(test_vhost EXCLUDE_FROM_ALL test_vhost.c)
 target_link_libraries(test_vhost ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
 
 add_executable(thread_design EXCLUDE_FROM_ALL thread_design.c)
-target_link_libraries(thread_design ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS})
+target_link_libraries(thread_design ${EVHTP_LIBS} ${EVHTP_EXTERNAL_LIBS} hiredis)
 
 add_dependencies(examples test test_basic test_client
                  test_ws test_proxy test_query test_vhost)
