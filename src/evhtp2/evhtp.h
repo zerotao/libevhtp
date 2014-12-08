@@ -5,6 +5,14 @@
 extern "C" {
 #endif
 
+#ifndef EVHTP_EXPORT
+# if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER || defined __clang__
+#  define EVHTP_EXPORT __attribute__ ((visibility("default")))
+# else
+#  define EVHTP_EXPORT
+# endif
+#endif
+
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <event2/buffer.h>
@@ -75,14 +83,6 @@ extern "C" {
 #define EVHTP_RES_GWTIMEOUT     504
 #define EVHTP_RES_VERNSUPPORT   505
 #define EVHTP_RES_BWEXEED       509
-
-#ifndef EVHTP_EXPORT
-# if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER || defined __clang__
-#  define EVHTP_EXPORT __attribute__ ((visibility("default")))
-# else
-#  define EVHTP_EXPORT
-# endif
-#endif
 
 enum evhtp_pause_state {
     evhtp_pause_s_nil = 0,
