@@ -20,17 +20,17 @@ test_cmp(evhtp_query_t * query, evhtp_kv_t * kvobj, const char * valstr, struct 
     }
 
     if (exp->val == NULL) {
-        if (kvobj->val || valstr) {
+        if (evhtp_kv_get_val(kvobj) || valstr) {
             return -1;
         }
 
         return 0;
     }
 
-    if (strcmp(kvobj->val, exp->val)) {
+    if (strcmp(evhtp_kv_get_val(kvobj), exp->val)) {
         printf("\n");
         printf("    expected: '%s'\n", exp->val);
-        printf("    actual:   '%s'\n", kvobj->val);
+        printf("    actual:   '%s'\n", evhtp_kv_get_val(kvobj));
         return -1;
     }
 
@@ -50,10 +50,10 @@ kvs_print(evhtp_kv_t * kvobj, void * arg) {
         printf(", ");
     }
 
-    printf("\"%s\": %s%s%s", kvobj->key,
-           kvobj->val ? "\"" : "",
-           kvobj->val,
-           kvobj->val ? "\"" : "");
+    printf("\"%s\": %s%s%s", evhtp_kv_get_key(kvobj),
+           evhtp_kv_get_val(kvobj) ? "\"" : "",
+           evhtp_kv_get_val(kvobj),
+           evhtp_kv_get_val(kvobj) ? "\"" : "");
 
     *key_idx += 1;
 
