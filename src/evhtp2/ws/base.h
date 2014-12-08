@@ -25,8 +25,7 @@ extern base_definition_t * base32_rfc;       /* rfc 3548/4648 definition */
 extern base_definition_t * base32_hex;       /* rfc 4648 HEX definition */
 
 extern base_definition_t * base16_rfc;       /* rfc 3548/4648 definition */
-int
-                           base_encode(base_definition_t *def, const void *in, size_t in_bytes, void **out, size_t *out_bytes);
+EVHTP_EXPORT int base_encode(base_definition_t *def, const void *in, size_t in_bytes, void **out, size_t *out_bytes);
 
 #define base64_encode(in, in_bytes, out, out_bytes) \
     base_encode(base64_rfc, in, in_bytes, out, out_bytes)
@@ -46,7 +45,7 @@ int
 #define base16_encode(in, in_bytes, out, out_bytes) \
     base_encode(base16_rfc, in, in_bytes, out, out_bytes)
 
-int base_decode(base_definition_t * def, const void * in, size_t in_bytes, void **out, size_t *out_bytes);
+EVHTP_EXPORT int base_decode(base_definition_t * def, const void * in, size_t in_bytes, void **out, size_t *out_bytes);
 
 #define base64_decode(in, in_bytes, out, out_bytes) \
     base_decode(base64_rfc, in, in_bytes, out, out_bytes)

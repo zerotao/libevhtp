@@ -163,8 +163,6 @@ evhtp_ssl_use_threads(void) {
     return 0;
 }
 
-EXPORT_SYMBOL(evhtp_ssl_use_threads);
-
 #endif
 
 int
@@ -315,5 +313,3 @@ evhtp_ssl_init(evhtp_t * htp, evhtp_ssl_cfg_t * cfg) {
 
     return 0;
 } /* evhtp_ssl_init */
-
-EXPORT_SYMBOL(evhtp_ssl_init);

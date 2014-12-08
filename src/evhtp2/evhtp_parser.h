@@ -92,27 +92,27 @@ struct evhtp_parser_hooks {
 };
 
 
-size_t              evhtp_parser_run(evhtp_parser *, evhtp_parser_hooks *, const char *, size_t);
-int                 evhtp_parser_should_keep_alive(evhtp_parser * p);
-evhtp_parser_scheme evhtp_parser_get_scheme(evhtp_parser *);
-evhtp_method        evhtp_parser_get_method(evhtp_parser *);
-const char        * evhtp_parser_get_methodstr(evhtp_parser *);
-const char        * evhtp_parser_get_methodstr_m(evhtp_method);
-void                evhtp_parser_set_major(evhtp_parser *, unsigned char);
-void                evhtp_parser_set_minor(evhtp_parser *, unsigned char);
-unsigned char       evhtp_parser_get_major(evhtp_parser *);
-unsigned char       evhtp_parser_get_minor(evhtp_parser *);
-unsigned char       evhtp_parser_get_multipart(evhtp_parser *);
-unsigned int        evhtp_parser_get_status(evhtp_parser *);
-uint64_t            evhtp_parser_get_content_length(evhtp_parser *);
-uint64_t            evhtp_parser_get_content_pending(evhtp_parser *);
-uint64_t            evhtp_parser_get_total_bytes_read(evhtp_parser *);
-evhtp_parser_error  evhtp_parser_get_error(evhtp_parser *);
-const char        * evhtp_parser_get_strerror(evhtp_parser *);
-void              * evhtp_parser_get_userdata(evhtp_parser *);
-void                evhtp_parser_set_userdata(evhtp_parser *, void *);
-void                evhtp_parser_init(evhtp_parser *, evhtp_parser_type);
-evhtp_parser      * evhtp_parser_new(void);
+EVHTP_EXPORT size_t              evhtp_parser_run(evhtp_parser *, evhtp_parser_hooks *, const char *, size_t);
+EVHTP_EXPORT int                 evhtp_parser_should_keep_alive(evhtp_parser * p);
+EVHTP_EXPORT evhtp_parser_scheme evhtp_parser_get_scheme(evhtp_parser *);
+EVHTP_EXPORT evhtp_method        evhtp_parser_get_method(evhtp_parser *);
+EVHTP_EXPORT const char        * evhtp_parser_get_methodstr(evhtp_parser *);
+EVHTP_EXPORT const char        * evhtp_parser_get_methodstr_m(evhtp_method);
+EVHTP_EXPORT void                evhtp_parser_set_major(evhtp_parser *, unsigned char);
+EVHTP_EXPORT void                evhtp_parser_set_minor(evhtp_parser *, unsigned char);
+EVHTP_EXPORT unsigned char       evhtp_parser_get_major(evhtp_parser *);
+EVHTP_EXPORT unsigned char       evhtp_parser_get_minor(evhtp_parser *);
+EVHTP_EXPORT unsigned char       evhtp_parser_get_multipart(evhtp_parser *);
+EVHTP_EXPORT unsigned int        evhtp_parser_get_status(evhtp_parser *);
+EVHTP_EXPORT uint64_t            evhtp_parser_get_content_length(evhtp_parser *);
+EVHTP_EXPORT uint64_t            evhtp_parser_get_content_pending(evhtp_parser *);
+EVHTP_EXPORT uint64_t            evhtp_parser_get_total_bytes_read(evhtp_parser *);
+EVHTP_EXPORT evhtp_parser_error  evhtp_parser_get_error(evhtp_parser *);
+EVHTP_EXPORT const char        * evhtp_parser_get_strerror(evhtp_parser *);
+EVHTP_EXPORT void              * evhtp_parser_get_userdata(evhtp_parser *);
+EVHTP_EXPORT void                evhtp_parser_set_userdata(evhtp_parser *, void *);
+EVHTP_EXPORT void                evhtp_parser_init(evhtp_parser *, evhtp_parser_type);
+EVHTP_EXPORT evhtp_parser      * evhtp_parser_new(void);
 
 #ifdef __cplusplus
 }

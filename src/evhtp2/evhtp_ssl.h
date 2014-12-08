@@ -72,6 +72,8 @@ int evhtp_ssl_init(evhtp_t * htp, evhtp_ssl_cfg_t * ssl_cfg);
 int evhtp_ssl_use_threads(void);
 #endif
 
+EVHTP_EXPORT EVHTP_CONN_GET_FN(ssl, evhtp_ssl_t *);
+
 #endif
 
 #ifdef __cplusplus
